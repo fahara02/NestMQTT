@@ -1,0 +1,324 @@
+{
+    "transitions": [
+      {
+        "current_state": "hibernate",
+        "event": "RESTART",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnected",
+        "event": "SYSTEM_FAULT",
+        "next_state": "hibernate",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "timeout",
+        "event": "SYSTEM_FAULT",
+        "next_state": "hibernate",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnected",
+        "event": "ERROR",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "timeout",
+        "event": "ERROR",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "timeout",
+        "event": "RESET",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnected",
+        "event": "BEFORE_CONNECT",
+        "next_state": "connectingTcp1",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connectingTcp1",
+        "event": "CONNECTED",
+        "next_state": "connectingTcp2",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connectingTcp2",
+        "event": "CONNECTED",
+        "next_state": "connectingMqtt",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connectingMqtt",
+        "event": "CONNECTED",
+        "next_state": "connected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connected",
+        "event": "SUBSCRIBED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connected",
+        "event": "UNSUBSCRIBED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connected",
+        "event": "PUBLISHED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connected",
+        "event": "DATA",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "SUBSCRIBED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "UNSUBSCRIBED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "PUBLISHED",
+        "next_state": "mqtt_ok",
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "DATA",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "DELETED",
+        "next_state": "mqtt_ok",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "BAD_PROTOCOL",
+        "next_state": "connected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "ERROR",
+        "next_state": "connected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "connected",
+        "event": "DISCONNECTED",
+        "next_state": "disconnectingMqtt1",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingMqtt1",
+        "event": "DISCONNECTED",
+        "next_state": "disconnectingMqtt2",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingMqtt2",
+        "event": "DISCONNECTED",
+        "next_state": "disconnectingTcp1",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingTcp1",
+        "event": "DISCONNECTED",
+        "next_state": "disconnectingTcp2",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingTcp2",
+        "event": "DISCONNECTED",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "mqtt_ok",
+        "event": "DISCONNECTED",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnected",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingTcp1",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingTcp2",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingMqtt1",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnectingMqtt2",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "timeout",
+        "event": "RETRY",
+        "next_state": "timeout",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "RETRY_OK",
+        "next_state": "connectingTcp1",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "RETRY_TCP1_OK",
+        "next_state": "connectingTcp2",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "RETRY_TCP2_OK",
+        "next_state": "connectingMqtt",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "RETRY_MQTT_OK",
+        "next_state": "connected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "RETRY",
+        "next_state": "reconnect",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "reconnect",
+        "event": "MAX_RETRIES",
+        "next_state": "timeout",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      },
+      {
+        "current_state": "disconnected",
+        "event": "DISCONNECTED",
+        "next_state": "disconnected",
+        "next_event": null,
+        "action": null,
+        "guard": null
+      }
+    ]
+  }
+  
