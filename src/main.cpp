@@ -1,11 +1,10 @@
 #include "ArduinoJson.h"
-#include "NestMQTT/MQTTCore/MQTTCore.h"
+#include "NestMQTT/MQTT_Core/MQTTCore.h"
 #include "sdkconfig.h"
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <stdio.h>
-
 
 void arduinoTask(void *pvParameter) {
   // Set WiFi to station mode and disconnect from an AP if it was previously

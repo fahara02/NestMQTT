@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstring>
 #include <functional>
-#include <iostream>
 #include <string>
 #include <utility>
 
@@ -16,7 +15,7 @@ StateMachine::StateMachine()
     Serial.println("LittleFS Mount Failed");
     return;
   }
-  deserializeTransitions("/device_settings.json");
+  deserializeTransitions("/states/device_settings.json");
 }
 
 StateMachine::~StateMachine() {
@@ -30,8 +29,8 @@ void StateMachine::deserializeTransitions(const char *filename) {
     return;
   }
 
-  size_t fileSize = file.size();
-  DynamicJsonDocument doc(fileSize);
+  // size_t fileSize = file.size();
+  JsonDocument doc;
 
   DeserializationError error = deserializeJson(doc, file);
   if (error) {
@@ -299,7 +298,7 @@ void StateMachine::serializeTransitions(const char *filename) {
     return;
   }
 
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
 
   JsonArray transitions = doc.createNestedArray("transitions");
 
@@ -324,7 +323,7 @@ void StateMachine::saveState(State state) {
     return;
   }
 
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   doc["current_state"] = stateToString(state);
 
   if (serializeJson(doc, file) == 0) {
@@ -341,8 +340,8 @@ StateMachine::State StateMachine::loadState() {
     return State::disconnected;
   }
 
-  size_t fileSize = file.size();
-  DynamicJsonDocument doc(fileSize);
+  // size_t fileSize = file.size();
+  JsonDocument doc;
 
   DeserializationError error = deserializeJson(doc, file);
   if (error) {
