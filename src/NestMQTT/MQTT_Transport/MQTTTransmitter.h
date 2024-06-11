@@ -1,14 +1,11 @@
-#ifndef MQTT_TRANSMITTTER_H_
-#define MQTT_TRANSMITER_H_
+#ifndef MQTT_TRANSMITTER_H_
+#define MQTT_TRANSMITTER_H_
 
 #include "MQTTAsyncTask.h"
-#include "MQTTBuffer.h"
 #include "MQTTCore.h"
 #include "MQTTError.h"
 #include "MQTTPacket.h"
 #include "MQTTTransmitRegistry.h"
-#include "MQTTTransportPacket.h"
-
 #include <stdint.h>
 
 using namespace MQTTCore;
@@ -48,8 +45,7 @@ public:
     }
 
     // Update status with the number of bytes sent
-    // _transmitStatus.update(TransmitStatusUpdate::withBytesSent(
-    // transmitPacket.packet.getPacketSize()));
+    // _transmitStatus.update(TransmitStatusUpdate::withBytesSent(transmitPacket.packet.getPacketSize()));
 
     return true;
   }
@@ -69,20 +65,19 @@ public:
     }
 
     // Update status with the number of bytes sent
-    // _transmitStatus.update(TransmitStatusUpdate::withBytesSent(
-    // transmitPacket.packet.getPacketSize()));
+    // _transmitStatus.update(TransmitStatusUpdate::withBytesSent(transmitPacket.packet.getPacketSize()));
 
     return true;
   }
 
   bool _advanceBuffer() {
-    // MQTT_SEMAPHORE_TAKE();
+    MQTT_SEMAPHORE_TAKE();
 
     PacketForTransmit *transmitPacket = transmitBuffer.getCurrent();
 
     if (!transmitPacket) {
       // No packet available, return false
-      // MQTT_SEMAPHORE_GIVE();
+      MQTT_SEMAPHORE_GIVE();
       return false;
     }
 
@@ -106,6 +101,7 @@ public:
       // Move to the next packet
       transmitPacket = transmitBuffer.getCurrent(); // Update pointer
       if (!transmitPacket) {
+        MQTT_SEMAPHORE_GIVE();
         return false;
       } else {
         // Update packet reference to the next packet
@@ -114,7 +110,7 @@ public:
       _transmitStatus.update(TransmitStatusUpdate::withBytesSent(0));
     }
 
-    // MQTT_SEMAPHORE_GIVE();
+    MQTT_SEMAPHORE_GIVE();
 
     return true;
   }
@@ -235,20 +231,4 @@ private:
 
 } // namespace MQTTTransport
 
-void testTransmitClass() {
-  // Create an instance of the Transmit class
-  MQTTTransport::Transmitter transmit(0); // Assuming time is 0 for testing
-
-  // Add some packets to the transmit buffer and print their IDs
-  for (int i = 0; i < 3; ++i) {
-    transmit.addPacket(
-        ControlPacketType::CONNECT); // For demonstration, assuming CONNECT
-                                     // packet type
-    uint16_t packetID = transmit.getPacketID();
-    // Get the last generated packet ID
-    Serial.print("Packet ID added: ");
-    Serial.println(packetID);
-  }
-}
-
-#endif
+#endif // MQTT_TRANSMITTER_H_

@@ -7,7 +7,7 @@ class Receiver {
 
 public:
   // Constructor
-  template <typename... Args> Receiver(uint32_t time, Args &&...args) : {}
+  Receiver() {}
 
   // Destructor
   ~Receiver() {}

@@ -34,7 +34,7 @@ using OnPubRelInternalCallback = std::function<void(uint16_t packetId)>;
 using OnPubAckInternalCallback = std::function<void(uint16_t packetId)>;
 using OnPubRecInternalCallback = std::function<void(uint16_t packetId)>;
 using OnPubCompInternalCallback = std::function<void(uint16_t packetId)>;
-using PayloadCallback =std::function<size_t(uint8_t* data, size_t maxSize, size_t index)> ;
+using onPayloadInternalCallback =std::function<size_t(uint8_t* data, size_t maxSize, size_t index)> ;
 
 
 

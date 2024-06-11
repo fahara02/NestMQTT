@@ -10,7 +10,6 @@
 #include "MQTTConstants.h"
 #include "MQTTTransportPacket.h"
 
-
 using namespace MQTTCore;
 
 namespace MQTTPacket {
@@ -30,7 +29,7 @@ private:
   size_t _payloadEndIndex = 0;
 
   // Callback for getting payload
-  MQTTCore::PayloadCallback _getPayload = nullptr;
+  MQTTCore::onPayloadInternalCallback _getPayload = nullptr;
 
   Subscription _subscription;
   Subscription *_subscriptionPtr = nullptr;

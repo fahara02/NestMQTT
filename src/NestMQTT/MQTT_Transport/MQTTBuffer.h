@@ -27,7 +27,7 @@ private:
 template <typename T> class Buffer {
 public:
   class Iterator {
-    friend class TransmitBuffer;
+    friend class Buffer;
 
   public:
     Iterator() : currentNode(nullptr), prevNode(nullptr) {}
@@ -81,7 +81,7 @@ public:
       : _head(nullptr), _tail(nullptr), _current(nullptr), _prev(nullptr),
         _bufferState(*this) {}
 
-  Buffer(const TransmitBuffer &other) : TransmitBuffer() {
+  Buffer(const Buffer &other) : Buffer() {
     Node<T> *current = other._head;
     while (current) {
       pushBack(current->data);
@@ -95,9 +95,9 @@ public:
     other._head = other._tail = other._current = other._prev = nullptr;
   }
 
-  Buffer &operator=(const TransmitBuffer &other) {
+  Buffer &operator=(const Buffer &other) {
     if (this != &other) {
-      TransmitBuffer temp(other);
+      Buffer temp(other);
       swap(temp);
     }
     return *this;
@@ -125,7 +125,7 @@ public:
     size_t currentSize = 0;
     size_t freeSize = 0;
 
-    const TransmitBuffer<T> &buffer;
+    const Buffer<T> &buffer;
 
     BufferState(const Buffer<T> &buffer) : buffer(buffer) { update(); }
 
