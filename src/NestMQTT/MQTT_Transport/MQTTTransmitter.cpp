@@ -57,7 +57,7 @@ void Transmitter::updateLatestID(uint16_t packetID) {
   _packetID = packetID;
 }
 
-const uint16_t Transmitter::getPacketID() {
+ uint16_t Transmitter::getPacketID() {
   return _packetID;
 }
 

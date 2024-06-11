@@ -28,7 +28,7 @@ public:
 
   const uint16_t &generateUniquePacketID();
   void updateLatestID(uint16_t packetID);
-  const uint16_t getPacketID();
+   uint16_t getPacketID();
 
 private:
   ControlPacketType parseControlPacketType(unsigned int value);
