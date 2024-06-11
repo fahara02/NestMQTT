@@ -357,12 +357,12 @@ private:
 
 } // namespace MQTTTransport
 
-void printBufferState(const MQTTTransport::Buffer<int> &buffer) {
+inline void printBufferState(const MQTTTransport::Buffer<int> &buffer) {
   String status = buffer.getStatus();
   Serial.println(status);
 }
 
-void printBuffer(const MQTTTransport::Buffer<int> &buffer) {
+inline void printBuffer(const MQTTTransport::Buffer<int> &buffer) {
   Serial.print("Buffer: ");
   MQTTTransport::Buffer<int>::Iterator it = buffer.begin();
   while (it != buffer.end()) {
@@ -373,7 +373,7 @@ void printBuffer(const MQTTTransport::Buffer<int> &buffer) {
   Serial.println();
 }
 
-void testBuffer() {
+inline void testBuffer() {
   Serial.println("-------------------------------------------------------------"
                  "----------------");
   Serial.println("-------------------------------------------------------------"
