@@ -48,18 +48,7 @@ bool Transmitter::_addPacketFront(Args &&...args) {
   return true;
 }
 
-const uint16_t &Transmitter::generateUniquePacketID() {
-  _registry.pid_lfsr = __transmit_next_pid(&_registry);
-  return _registry.pid_lfsr;
-}
 
-void Transmitter::updateLatestID(uint16_t packetID) {
-  _packetID = packetID;
-}
-
- uint16_t Transmitter::getPacketID() {
-  return _packetID;
-}
 
 bool Transmitter::_advanceBuffer() {
   MQTT_SEMAPHORE_TAKE();
@@ -105,7 +94,18 @@ bool Transmitter::_advanceBuffer() {
 
   return true;
 }
+const uint16_t &Transmitter::generateUniquePacketID() {
+  _registry.pid_lfsr = __transmit_next_pid(&_registry);
+  return _registry.pid_lfsr;
+}
 
+void Transmitter::updateLatestID(uint16_t packetID) {
+  _packetID = packetID;
+}
+
+ uint16_t Transmitter::getPacketID() {
+  return _packetID;
+}
 Transmitter::TransmitStatusUpdate::TransmitStatusUpdate()
     : bytesSent(nullptr), pingSent(nullptr), lastClientActivity(nullptr),
       lastServerActivity(nullptr), disconnectReason(nullptr) {}

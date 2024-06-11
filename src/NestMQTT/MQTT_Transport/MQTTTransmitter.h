@@ -20,7 +20,7 @@ public:
 
   // Destructor
   ~Transmitter() {}
-   int _sendPacket();
+  int _sendPacket();
   template <typename... Args> bool addPacket(Args &&...args);
   template <typename... Args> bool _addPacketFront(Args &&...args);
   void _checkBuffer();
