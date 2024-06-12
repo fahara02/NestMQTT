@@ -6,6 +6,7 @@
 #include "MQTTReceiver.h"
 #include "MQTTStateMachine.h"
 #include "MQTTTransmitter.h"
+#include "MQTTTransport.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include <Arduino.h>
@@ -105,6 +106,7 @@ private:
   const char *client_id;
   StateMachine::State _state;
   MqttClientCfg _clientcfg;
+  MQTTTransport::Transport* _transport;
   MQTTTransport::Transmitter *_tx;
   MQTTTransport::Receiver *_rx;
 

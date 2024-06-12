@@ -6,6 +6,7 @@
 #include "MQTTError.h"
 #include "MQTTPacket.h"
 #include "MQTTTransmitRegistry.h"
+#include "MQTTTransport.h"
 #include <stdint.h>
 
 using namespace MQTTCore;
@@ -16,7 +17,7 @@ class Transmitter {
 public:
   // Constructor
   template <typename... Args>
-  Transmitter(uint32_t time, Args &&...args);
+  Transmitter(Transport* transport,Args &&...args);
 
   // Destructor
   ~Transmitter() {}
@@ -73,7 +74,8 @@ private:
    OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error,
                       uint16_t packetID, Args &&...args);
   };
-
+  Transport* _transport;
+  
   Buffer<OutboundPacket> transmitBuffer;
   TransmitStatus _transmitStatus;
   transmit_registry _registry;

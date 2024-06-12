@@ -112,10 +112,10 @@ public:
   }
 
   // Public member functions
-  size_t getPacketSize() const;
-  uint16_t getPacketID() const;
-  const uint8_t *getPacketData() const;
-  const uint8_t *getPacketData(size_t index) const;
+  size_t size() const;
+  uint16_t packetID() const;
+  const uint8_t *data() const;
+  const uint8_t *data(size_t index) const;
   MQTTCore::ControlPacketType packetType() const;
   size_t available(size_t index);
   void setDup();
