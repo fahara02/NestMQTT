@@ -76,13 +76,12 @@ int Transmitter::_sendPacket() {
 
 template <typename... Args> bool Transmitter::addPacket(Args &&...args) {
   MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
-  const uint16_t &packetID = generateUniquePacketID();
-  updateLatestID(packetID);
-  OutboundPacket transmitPacket(_transmitTime, error, packetID,
+
+  OutboundPacket transmitPacket(_transmitTime, error,
                                 std::forward<Args>(args)...);
 
   _registry.packet_queue.pushBack(
-      QueuedPacket{nullptr, packetID, 0, MQTT_QUEUED_UNSENT, 0, DISCONNECT});
+      QueuedPacket{nullptr, 0, MQTT_QUEUED_UNSENT, 0, DISCONNECT});
   if (error != MQTTCore::MQTTErrors::OK) {
     return false; // Failed to create packet
   }
@@ -94,9 +93,8 @@ template <typename... Args> bool Transmitter::addPacket(Args &&...args) {
 
 template <typename... Args> bool Transmitter::_addPacketFront(Args &&...args) {
   MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
-  const uint16_t &packetID = generateUniquePacketID();
-  updateLatestID(packetID);
-  OutboundPacket transmitPacket(_transmitTime, error, packetID,
+
+  OutboundPacket transmitPacket(_transmitTime, error,
                                 std::forward<Args>(args)...);
   if (error != MQTTCore::MQTTErrors::OK) {
     return false; // Failed to create packet

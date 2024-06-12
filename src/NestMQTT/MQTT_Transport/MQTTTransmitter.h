@@ -85,10 +85,8 @@ private:
     Packet packet;
 
     template <typename... Args>
-    OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error, uint16_t packetID,
-                   Args &&...args)
-        : transmit_time(t),
-          packet(error, packetID, std::forward<Args>(args)...){};
+    OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error, Args &&...args)
+        : transmit_time(t), packet(error, std::forward<Args>(args)...){};
   };
 
   Transport *_transport;
