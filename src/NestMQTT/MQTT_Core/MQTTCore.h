@@ -103,6 +103,8 @@ struct mqtt_response {
   } decoded;
 };
 
+typedef uint8_t MQTTPacketType;
+
 constexpr struct {
   const uint8_t RESERVED1 = 0;
   const uint8_t CONNECT = 1 << 4;
@@ -122,7 +124,7 @@ constexpr struct {
   const uint8_t RESERVED2 = 1 << 4;
 } PacketType;
 
-struct HeaderFlag {
+constexpr struct {
   const uint8_t CONNECT_RESERVED = 0x00;
   const uint8_t CONNACK_RESERVED = 0x00;
   const uint8_t PUBLISH_DUP = 0x08;
@@ -143,7 +145,7 @@ struct HeaderFlag {
   const uint8_t PINGRESP_RESERVED = 0x00;
   const uint8_t DISCONNECT_RESERVED = 0x00;
   const uint8_t RESERVED2_RESERVED = 0x00;
-};
+} HeaderFlag;
 
 constexpr struct {
   const uint8_t USERNAME = 0x80;

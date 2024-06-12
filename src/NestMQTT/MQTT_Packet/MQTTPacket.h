@@ -8,128 +8,96 @@
 
 #include "MQTTCallbacks.h"
 #include "MQTTConstants.h"
+#include "MQTTError.h"
 #include "MQTTTransportPacket.h"
-
-using namespace MQTTCore;
 
 namespace MQTTPacket {
 
 // Packet class definition
 class Packet {
 private:
-  // Private member variables
-  MQTTErrors &_error;
+  MQTTErrors _error;
   uint16_t _packetId;
-  uint8_t *_packetData = nullptr;
-  size_t _packetSize = 0;
+  uint8_t *_packetData;
+  size_t _packetSize;
 
   // Variables for chunked payload handling
-  size_t _payloadIndex = 0;
-  size_t _payloadStartIndex = 0;
-  size_t _payloadEndIndex = 0;
-
-  // Callback for getting payload
-  MQTTCore::onPayloadInternalCallback _getPayload = nullptr;
+  size_t _payloadIndex;
+  size_t _payloadStartIndex;
+  size_t _payloadEndIndex;
 
   Subscription _subscription;
-  Subscription *_subscriptionPtr = nullptr;
+  Subscription *_subscriptionPtr;
+  Unsubscription _unsubscription;
+  Unsubscription *_unsubscriptionPtr;
 
-  // Private member functions
-  size_t requiredPacketSize(size_t remainingLength);
+  // Callback for getting payload
+  MQTTCore::onPayloadInternalCallback _getPayload;
+
   bool _allocateMemory(size_t remainingLength, bool check = true);
-  void _createSubscribe(MQTTErrors &error, const Subscription &subscription);
+  size_t _fillPublishHeader(uint16_t packetId, const char *topic,
+                            size_t remainingLength, uint8_t qos, bool retain);
 
-  Subscription CreateDefaultSubscription() {
-    const char *topic = "*";
-    uint8_t qos = 0;
-    return Subscription(topic, qos);
-  }
+  void _createSubscribe(MQTTErrors &error, const Subscription &subscription);
+  void _createUnsubscribe(MQTTErrors &error,
+                          const Unsubscription &unsubscription);
 
 public:
-  // Constructors
-  explicit Packet(MQTTErrors &error, MQTTCore::ControlPacketType type)
-      : _error(error), _packetId(0),
-        _subscription(CreateDefaultSubscription()) {}
+  // Constructor for CONNECT
+  Packet(MQTTErrors &error, bool cleanSession, const char *username,
+         const char *password, const char *willTopic, bool willRetain,
+         uint8_t willQos, const uint8_t *willPayload,
+         uint16_t willPayloadLength, uint16_t keepAlive, const char *clientId);
 
-  Packet(MQTTErrors &error, uint16_t packetId, MQTTCore::ControlPacketType type)
-      : _error(error), _packetId(packetId),
-        _subscription(CreateDefaultSubscription()) {}
+  // Constructor for PUBLISH
+  Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
+         const uint8_t *payload, size_t payloadLength, uint8_t qos,
+         bool retain);
+  Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
+         MQTTCore::onPayloadInternalCallback payloadCallback,
+         size_t payloadLength, uint8_t qos, bool retain);
 
-  Packet(MQTTErrors &error, uint16_t packetId, const char *topic, uint8_t qos)
-      : _error(error), _packetId(packetId),
-        _subscription(Subscription(topic, qos)) {}
+  // Constructor for SUBSCRIBE
+  Packet(MQTTErrors &error, uint16_t packetId, const char *topic, uint8_t qos);
+  Packet(MQTTErrors &error, uint16_t packetId,
+         const Subscription &subscription);
 
   template <typename... Args>
-  Packet(MQTTErrors &error, uint16_t packetId, const char *topic1, uint8_t qos1,
-         const char *topic2, uint8_t qos2, Args &&...args)
-      : _error(error), _packetId(packetId),
-        _subscription(Subscription(topic1, qos1, topic2, qos2,
-                                   std::forward<Args>(args)...)) {}
+  Packet(MQTTCore::MQTTErrors &error, uint16_t packetId, const char *topic1,
+         uint8_t qos1, const char *topic2, uint8_t qos2, Args &&...args);
 
-  Packet(MQTTErrors &error, uint16_t packetId, const Subscription &subscription)
-      : _error(error), _packetId(packetId), _subscription(subscription) {}
+  // Constructor for UNSUBSCRIBE
+  Packet(MQTTErrors &error, uint16_t packetId, const char *topic);
+  template <typename... Args>
+  Packet(MQTTErrors &error, // NOLINT(runtime/references)
+         uint16_t packetId, const char *topic1, const char *topic2,
+         Args &&...args);
 
-  Packet(MQTTErrors &error, uint16_t packetId, const char *topic)
-      : _error(error), _packetId(0),
-        _subscription(CreateDefaultSubscription()) {}
+  // Constructor for PING, DISCONNECT
+  Packet(MQTTErrors &error, MQTTPacketType type);
+
+  // Constructor for PUBACK, PUBREC, PUBREL, PUBCOMP
+  Packet(MQTTErrors &error, MQTTPacketType type, uint16_t packetId);
 
   // Destructor
-  ~Packet() = default;
+  ~Packet();
 
   // Copy assignment operator
-  Packet &operator=(const Packet &other) {
-    if (this != &other) { // Check for self-assignment
-      // Copy member variables from 'other' to 'this'
-      _error = other._error;
-      _packetId = other._packetId;
-      _packetSize = other._packetSize;
+  Packet &operator=(const Packet &other);
 
-      // Deep copy of _packetData
-      if (_packetData != nullptr && _packetSize > 0) {
-        delete[] _packetData; // Delete existing data if any
-      }
-      if (other._packetData != nullptr && other._packetSize > 0) {
-        _packetData = new uint8_t[other._packetSize];
-        std::memcpy(_packetData, other._packetData, other._packetSize);
-      } else {
-        _packetData = nullptr;
-      }
-
-      // Copy other member variables
-      _payloadIndex = other._payloadIndex;
-      _payloadStartIndex = other._payloadStartIndex;
-      _payloadEndIndex = other._payloadEndIndex;
-      _getPayload = other._getPayload;
-
-      // Deep copy of Subscription object
-      if (other._subscriptionPtr != nullptr) {
-        _subscriptionPtr = new Subscription(*other._subscriptionPtr);
-      } else {
-        _subscriptionPtr = nullptr;
-      }
-    }
-    return *this;
-  }
-
-  // Public member functions
   size_t size() const;
-  uint16_t packetID() const;
+  uint16_t packetId() const;
   const uint8_t *data() const;
   const uint8_t *data(size_t index) const;
-  MQTTCore::ControlPacketType packetType() const;
+  MQTTCore::MQTTPacketType packetType() const;
   size_t available(size_t index);
   void setDup();
   bool removable() const;
-  bool isEmpty() const {
-    return (_packetData == nullptr) || (_packetSize == 0);
-  }
-  bool isValid() const {
-    // Check if the packet data pointer is not null and the packet size is
-    // greater than 0
-    return (_packetData != nullptr) && (_packetSize > 0);
-  }
+  bool isEmpty() const;
+  bool isValid() const;
 
-  MQTTErrors getPacketError();
+  size_t _chunkedAvailable(size_t index);
+  const uint8_t *_chunkedData(size_t index) const;
 };
 
 } // namespace MQTTPacket

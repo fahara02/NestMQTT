@@ -13,6 +13,7 @@ extern EspClass ESP;
 #define MQTT_SEMAPHORE_GIVE() xSemaphoreGive(_xSemaphore)
 #define MQTT_GET_FREE_MEMORY()                                                 \
   std::max(ESP.getMaxAllocHeap(), ESP.getMaxAllocPsram())
+
 #define MQTT_YIELD() vTaskDelay(1)
 
 #endif // MQTT_ASYNC_TASK_H_

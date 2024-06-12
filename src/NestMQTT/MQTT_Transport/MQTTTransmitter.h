@@ -12,6 +12,7 @@
 
 using namespace MQTTCore;
 using namespace MQTTClientDetails;
+
 // Forward declaration of MqttClient and its inner struct
 class MqttClient;
 
@@ -24,11 +25,12 @@ public:
 
   // Destructor
   ~Transmitter() {}
+
+  // Update configuration
   virtual void
-  updateConfig(const MQTTClientDetails::MqttClientCfg &newConfig) override {
-    _clientCfg = newConfig;
-    // You can perform any necessary actions here
-  }
+  updateConfig(const MQTTClientDetails::MqttClientCfg &newConfig) override;
+
+  // Public methods
   bool sendConnectionRequest();
   int _sendPacket();
   template <typename... Args> bool addPacket(Args &&...args);
@@ -43,7 +45,7 @@ public:
 private:
   ControlPacketType parseControlPacketType(unsigned int value);
   MqttClient *_client;
-  MQTTClientDetails ::MqttClientCfg _clientCfg;
+  MQTTClientDetails::MqttClientCfg _clientCfg;
   uint32_t _transmitTime;
   uint16_t _packetID;
 
@@ -83,7 +85,9 @@ private:
 
     template <typename... Args>
     OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error, uint16_t packetID,
-                   Args &&...args);
+                   Args &&...args)
+        : transmit_time(t),
+          packet(error, packetID, std::forward<Args>(args)...){};
   };
 
   Transport *_transport;

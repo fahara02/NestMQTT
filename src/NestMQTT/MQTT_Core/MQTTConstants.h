@@ -13,6 +13,8 @@ constexpr int MQTT_CLIENT_ID_MAX_LENGTH = 23 + 1;
 constexpr int MAX_ALLOWED_TOPICS = 10; // Maximum number of topics
 constexpr int MAX_ALLOWED_RETRIES = 5;
 constexpr int TX_BUFFER_MAX_SIZE_BYTE = 1440;
+constexpr int RX_BUFFER_MAX_SIZE_BYTE = 1440;
+constexpr int MQTT_MIN_FREE_MEMORY = 16384;
 
 } // namespace MQTTCore
 

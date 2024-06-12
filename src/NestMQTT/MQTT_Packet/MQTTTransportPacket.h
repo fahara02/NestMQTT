@@ -25,6 +25,12 @@ struct Subscription {
   SubscribeItem list[MAX_TOPICS]; // Fixed-size array
   size_t numberTopics;
 
+  Subscription() : numberTopics(1) {
+    strncpy(list[0].topic, "", MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+    list[0].qos = 0;
+  }
+
   Subscription(size_t topics, const SubscribeItem *itemList)
       : numberTopics(topics) {
     if (topics > MAX_TOPICS) {
@@ -58,7 +64,8 @@ struct Subscription {
 
   // Constructor overload for more than two topics and qoses
   template <typename... Args>
-  Subscription(const char *topic1, const char *topic2, Args &&...args)
+  Subscription(const char *topic1, uint8_t qos1, const char *topic2,
+               uint8_t qos2, Args &&...args)
       : numberTopics((sizeof...(Args) / 2) + 2) {
     static_assert(sizeof...(Args) % 2 == 0,
                   "Each topic must have a corresponding QoS");
@@ -86,6 +93,77 @@ private:
     list[index].topic[MAX_TOPIC_LENGTH - 1] =
         '\0'; // Null-terminate to ensure safety
     list[index].qos = qos;
+    ++index;
+    fillItems(index, std::forward<Args>(args)...);
+  }
+
+  // Base case for fillItems
+  void fillItems(size_t &) {}
+};
+
+struct UnsubscribeItem {
+  char topic[MAX_TOPIC_LENGTH];
+};
+
+// Struct for UNSUBSCRIBE packet parameters
+struct Unsubscription {
+  UnsubscribeItem list[MAX_TOPICS]; // Fixed-size array
+  size_t numberTopics;
+
+  Unsubscription() : numberTopics(1) {
+    strncpy(list[0].topic, "", MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+  }
+
+  Unsubscription(size_t topics, const UnsubscribeItem *itemList)
+      : numberTopics(topics) {
+    if (topics > MAX_TOPICS) {
+      // throw std::runtime_error("Too many topics specified");
+    }
+    for (size_t i = 0; i < topics; ++i) {
+      strncpy(list[i].topic, itemList[i].topic, MAX_TOPIC_LENGTH - 1);
+      list[i].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+    }
+  }
+
+  // Constructor overload for a single topic
+  Unsubscription(const char *topic) : numberTopics(1) {
+    strncpy(list[0].topic, topic, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+  }
+
+  // Constructor overload for two topics
+  Unsubscription(const char *topic1, const char *topic2) : numberTopics(2) {
+    strncpy(list[0].topic, topic1, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+    strncpy(list[1].topic, topic2, MAX_TOPIC_LENGTH - 1);
+    list[1].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+  }
+
+  // Constructor overload for more than two topics
+  template <typename... Args>
+  Unsubscription(const char *topic1, const char *topic2, Args &&...args)
+      : numberTopics((sizeof...(Args)) + 2) {
+    static_assert(sizeof...(Args) <= MAX_TOPICS - 2,
+                  "Too many topics specified");
+
+    strncpy(list[0].topic, topic1, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+    strncpy(list[1].topic, topic2, MAX_TOPIC_LENGTH - 1);
+    list[1].topic[MAX_TOPIC_LENGTH - 1] = '\0'; // Ensure null-terminated
+
+    size_t i = 2;
+    fillItems(i, std::forward<Args>(args)...);
+  }
+
+private:
+  // Helper function to fill UnsubscribeItem array
+  template <typename... Args>
+  void fillItems(size_t &index, const char *topic, Args &&...args) {
+    strncpy(list[index].topic, topic,
+            MAX_TOPIC_LENGTH - 1); // Ensure null-terminated
+    list[index].topic[MAX_TOPIC_LENGTH - 1] =
+        '\0'; // Null-terminate to ensure safety
     ++index;
     fillItems(index, std::forward<Args>(args)...);
   }
