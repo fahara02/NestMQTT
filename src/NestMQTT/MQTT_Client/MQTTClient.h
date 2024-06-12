@@ -1,7 +1,7 @@
 #ifndef MQTT_CLIENT_H_
 #define MQTT_CLIENT_H_
-
 #include "MQTTCallbacks.h"
+#include "MQTTClientConfig.h"
 #include "MQTTCore.h"
 #include "MQTTReceiver.h"
 #include "MQTTStateMachine.h"
@@ -15,16 +15,14 @@
 #include <utility>
 #include <vector>
 
-
 using namespace MQTTCore;
+using namespace MQTTClientDetails;
 
 class MqttClient {
   friend class MQTTTransport::Transmitter;
   friend class MQTTTransport::Receiver;
 
 public:
-  SemaphoreHandle_t _xSemaphore;
-  TaskHandle_t _taskHandle;
   virtual ~MqttClient();
   bool connected() const;
   bool disconnected() const;
@@ -44,71 +42,19 @@ public:
                    MQTTCore::onPayloadInternalCallback callback, size_t length);
 
 protected:
-  struct MqttClientCfg {
-    typedef void (*mqttClientHook)(void *);
-    MQTTCore::MQTT_Protocol_Version_t _protocolVersion;
-    MQTTCore::MQTT_Transport_t transport;
-    bool set_null_client_id;
-
-    struct lastWill {
-      const char *_username;
-      const char *_password;
-      const char *_lwt_topic;
-      const uint8_t *_lwt_msg;
-      uint16_t _lwt_msg_len;
-      uint8_t _lwt_qos;
-      bool _willRetain;
-    };
-
-    struct ConnectionSettings {
-      const char *host;
-      const char *uri;
-      uint16_t _port;
-      bool _useIp;
-      IPAddress _ip;
-      bool _cleanSession;
-      bool disable_auto_reconnect;
-      bool disable_keepalive;
-      uint32_t reconnect_timeout_ms;
-      uint32_t network_timeout_ms;
-      uint32_t refresh_connection_after_ms;
-      uint32_t message_retransmit_timeout;
-      uint32_t _keepAlive;
-    };
-
-    void *user_context;
-    int task_prio;
-    int task_stack;
-    int buffer_size;
-
-    struct SecureConnection_Settings {
-      const char *cert_pem;
-      size_t cert_len;
-      const char *client_cert_pem;
-      size_t client_cert_len;
-      size_t client_key_len;
-
-      const struct psk_key_hint *psk_hint_key;
-      bool use_global_ca_store;
-      esp_err_t (*crt_bundle_attach)(void *conf);
-
-      const char **alpn_protos;
-      const char *clientkey_password;
-      int clientkey_password_len;
-      bool skip_cert_common_name_check;
-      bool use_secure_element;
-    };
-    void *ds_data;
-    const char *path;
-  };
+  SemaphoreHandle_t _xSemaphore;
+  TaskHandle_t _taskHandle;
 
 private:
+  bool initiateConnectionRequest();
   const char *client_id;
-  StateMachine::State _state;
-  MqttClientCfg _clientcfg;
-  MQTTTransport::Transport* _transport;
+  StateMachine::State _clientState;
+  StateMachine _statemachine;
+  MQTTClientDetails::MqttClientCfg _clientcfg;
+  MQTTTransport::Transport *_transport;
   MQTTTransport::Transmitter *_tx;
   MQTTTransport::Receiver *_rx;
+  void updateClientState() { _clientState = _statemachine.getCurrentState(); }
 
   std::vector<OnConnectUserCallback> _onConnectUserCallbacks;
   std::vector<OnDisconnectUserCallback> _onDisconnectUserCallbacks;
@@ -162,6 +108,9 @@ private:
 
     return clientId;
   }
+
+public:
+  StateMachine::State getClientState() const { return _clientState; }
 };
 
 #endif // MQTT_CLIENT_H_

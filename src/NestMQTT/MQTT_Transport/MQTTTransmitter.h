@@ -2,6 +2,7 @@
 #define MQTT_TRANSMITTER_H_
 
 #include "MQTTAsyncTask.h"
+#include "MQTTClientConfig.h"
 #include "MQTTCore.h"
 #include "MQTTError.h"
 #include "MQTTPacket.h"
@@ -10,17 +11,21 @@
 #include <stdint.h>
 
 using namespace MQTTCore;
+using namespace MQTTClientDetails;
+// Forward declaration of MqttClient and its inner struct
+class MqttClient;
 
 namespace MQTTTransport {
 
 class Transmitter {
 public:
   // Constructor
-  template <typename... Args>
-  Transmitter(Transport* transport,Args &&...args);
+  template <typename... Args> Transmitter(MqttClient *client, Args &&...args);
 
   // Destructor
   ~Transmitter() {}
+  bool
+  sendConnectionRequest(const MQTTClientDetails ::MqttClientCfg &clientCfg);
   int _sendPacket();
   template <typename... Args> bool addPacket(Args &&...args);
   template <typename... Args> bool _addPacketFront(Args &&...args);
@@ -29,11 +34,11 @@ public:
 
   const uint16_t &generateUniquePacketID();
   void updateLatestID(uint16_t packetID);
-   uint16_t getPacketID();
+  uint16_t getPacketID();
 
 private:
   ControlPacketType parseControlPacketType(unsigned int value);
-
+  MqttClient *_client;
   uint32_t _transmitTime;
   uint16_t _packetID;
 
@@ -45,13 +50,14 @@ private:
     DisconnectReason *disconnectReason;
 
     TransmitStatusUpdate();
-
     static TransmitStatusUpdate withBytesSent(size_t bytesSent);
     static TransmitStatusUpdate withPingSent(bool pingSent);
-    static TransmitStatusUpdate withLastClientActivity(uint32_t lastClientActivity);
-    static TransmitStatusUpdate withLastServerActivity(uint32_t lastServerActivity);
-    static TransmitStatusUpdate withDisconnectReason(DisconnectReason disconnectReason);
-
+    static TransmitStatusUpdate
+    withLastClientActivity(uint32_t lastClientActivity);
+    static TransmitStatusUpdate
+    withLastServerActivity(uint32_t lastServerActivity);
+    static TransmitStatusUpdate
+    withDisconnectReason(DisconnectReason disconnectReason);
     ~TransmitStatusUpdate();
   };
 
@@ -66,16 +72,16 @@ private:
     void update(const TransmitStatusUpdate &update);
   };
 
-  struct OutboundPacket{
+  struct OutboundPacket {
     uint32_t transmit_time;
     MQTTPacket::Packet packet;
 
     template <typename... Args>
-   OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error,
-                      uint16_t packetID, Args &&...args);
+    OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error, uint16_t packetID,
+                   Args &&...args);
   };
-  Transport* _transport;
-  
+
+  Transport *_transport;
   Buffer<OutboundPacket> transmitBuffer;
   TransmitStatus _transmitStatus;
   transmit_registry _registry;

@@ -1,200 +1,78 @@
 #include "MQTTTransmitter.h"
 #include "MQTTAsyncTask.h"
+#include "MQTTPacket.h"
+#include "MqttClient.h" // Include the full definition here
 
 namespace MQTTTransport {
 
 template <typename... Args>
-Transmitter::Transmitter(Transport* transport, Args&&... args)
-  : _transport(transport), _transmitTime(0), _transmitStatus{} {
+Transmitter::Transmitter(MqttClient *client, Args &&...args)
+    : _client(client), _transport(client->_transport), _transmitTime(0),
+      _transmitStatus{} {
   // Initial status update
-  _transmitStatus.update(TransmitStatusUpdate::withLastClientActivity(millis()));
-  // Optionally, add a packet during construction
-  // addPacket(std::forward<Args>(args)...);
+  _transmitStatus.update(
+      TransmitStatusUpdate::withLastClientActivity(millis()));
 }
+
+bool Transmitter::sendConnectionRequest(
+    const MQTTClientDetails::MqttClientCfg &clientCfg) {
+  bool result = false;
+  if (_client->getClientState() == StateMachine::State::disconnected) {
+    MQTT_SEMAPHORE_TAKE();
+    if (_addPacketFront(clientCfg.connections_settings._cleanSession,
+                        clientCfg.last_will_settings._username,
+                        clientCfg.last_will_settings._password,
+                        clientCfg.last_will_settings._lwt_topic,
+                        clientCfg.last_will_settings._willRetain,
+                        clientCfg.last_will_settings._lwt_qos,
+                        clientCfg.last_will_settings._lwt_msg,
+                        clientCfg.last_will_settings._lwt_msg_len,
+                        (uint16_t)(clientCfg.connections_settings._keepAlive /
+                                   1000), // 32b to 16b doesn't overflow because
+                                          // it comes from 16b originally
+                        clientCfg.set_null_client_id ? nullptr
+                                                     : clientCfg.path)) {
+      result = true;
+      _client->_statemachine.handleEvent(StateMachine::Event::CONNECTED);
+
+    } else {
+      MQTT_SEMAPHORE_GIVE();
+      // mqtt_log_e("Could not create CONNECT packet");
+      // _onError(0, Error::OUT_OF_MEMORY);
+    }
+    MQTT_SEMAPHORE_GIVE();
+  }
+  return result;
+}
+
 int Transmitter::_sendPacket() {
   MQTT_SEMAPHORE_TAKE();
-  OutboundPacket* packet = transmitBuffer.getCurrent();
-  size_t written = 0;
+  OutboundPacket *packet = transmitBuffer.getCurrent();
+  size_t haveWritten = 0;
 
   if (packet) {
     size_t wantToWrite = packet->packet.available(_transmitStatus._bytesSent);
-    if (wantToWrite == 0) {
+    size_t haveWritten = _transport->write(
+        packet->packet.data(_transmitStatus._bytesSent), wantToWrite);
+    if (haveWritten == wantToWrite) {
+      packet->transmit_time = millis();
+      _transmitStatus.update(
+          TransmitStatusUpdate::withLastClientActivity(millis()));
+      _transmitStatus.update(TransmitStatusUpdate::withBytesSent(
+          _transmitStatus._bytesSent += haveWritten));
+
+      MQTT_SEMAPHORE_GIVE();
+      return haveWritten;
+    } else {
       MQTT_SEMAPHORE_GIVE();
       return 0;
     }
-
-    written = _transport->write(packet->packet.data(_transmitStatus._bytesSent), wantToWrite);
-    uint32_t currentTime = millis();
-
-    _transmitStatus.update(TransmitStatusUpdate::withBytesSent(_transmitStatus._bytesSent + written));
-    _transmitStatus.update(TransmitStatusUpdate::withLastClientActivity(currentTime));
-
-    packet->transmit_time = currentTime;
-  }
-
-  MQTT_SEMAPHORE_GIVE();
-  return written;
-}
-
-
-template <typename... Args>
-bool Transmitter::addPacket(Args&&... args) {
-  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
-  const uint16_t& packetID = generateUniquePacketID();
-  updateLatestID(packetID);
-  OutboundPacket outboundPacket(_transmitTime, error, packetID, std::forward<Args>(args)...);
-
-  _registry.packet_queue.pushBack(
-      QueuedPacket{nullptr, packetID, 0, MQTT_QUEUED_UNSENT, 0, DISCONNECT});
-  if (error != MQTTCore::MQTTErrors::OK) {
-    return false; // Failed to create packet
-  }
-  if (!transmitBuffer.pushBack(outboundPacket)) {
-    // Failed to add packet to buffer
-    return false;
-  }
-  return true;
-}
-
-template <typename... Args>
-bool Transmitter::_addPacketFront(Args&&... args) {
-  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
-  const uint16_t& packetID = generateUniquePacketID();
-  updateLatestID(packetID);
-  OutboundPacket outboundPacket(_transmitTime, error, packetID, std::forward<Args>(args)...);
-  if (error != MQTTCore::MQTTErrors::OK) {
-    return false; // Failed to create packet
-  }
-  if (!transmitBuffer.pushFront(outboundPacket)) {
-    // Failed to add packet to buffer
-    return false;
-  }
-  return true;
-}
-
-bool Transmitter::_advanceBuffer() {
-  MQTT_SEMAPHORE_TAKE();
-
-  OutboundPacket* outboundPacket = transmitBuffer.getCurrent();
-
-  if (!outboundPacket) {
-    // No packet available, return false
+  } else {
     MQTT_SEMAPHORE_GIVE();
-    return false;
+    return 0;
   }
-
-  MQTTPacket::Packet& packet = outboundPacket->packet;
-
-  if (packet.isValid() && _transmitStatus._bytesSent == packet.size()) {
-    if (packet.packetType() == ControlPacketType::DISCONNECT) {
-      _transmitStatus.update(TransmitStatusUpdate::withDisconnectReason(DisconnectReason::USER_OK));
-    }
-    if (packet.removable()) {
-      transmitBuffer.removeCurrent();
-    } else {
-      // Set 'dup' in case we have to retry
-      if (packet.packetType() == ControlPacketType::PUBLISH) {
-        packet.setDup();
-      }
-      transmitBuffer.next();
-    }
-    // Move to the next packet
-    outboundPacket = transmitBuffer.getCurrent(); // Update pointer
-    if (!outboundPacket) {
-      MQTT_SEMAPHORE_GIVE();
-      return false;
-    } else {
-      // Update packet reference to the next packet
-      packet = outboundPacket->packet;
-    }
-    _transmitStatus.update(TransmitStatusUpdate::withBytesSent(0));
-  }
-
-  MQTT_SEMAPHORE_GIVE();
-  return true;
 }
 
-const uint16_t& Transmitter::generateUniquePacketID() {
-  static uint16_t packetID = 0;
-  return ++packetID;
-}
-
-void Transmitter::updateLatestID(uint16_t packetID) {
-  _transmitTime = packetID;
-}
-
-uint16_t Transmitter::getPacketID() {
-  return _transmitTime;
-}
-
-Transmitter::TransmitStatusUpdate::TransmitStatusUpdate()
-  : bytesSent(nullptr), pingSent(nullptr), lastClientActivity(nullptr),
-    lastServerActivity(nullptr), disconnectReason(nullptr) {}
-
-Transmitter::TransmitStatusUpdate
-Transmitter::TransmitStatusUpdate::withBytesSent(size_t bytesSent) {
-  TransmitStatusUpdate update;
-  update.bytesSent = new size_t(bytesSent);
-  return update;
-}
-
-Transmitter::TransmitStatusUpdate
-Transmitter::TransmitStatusUpdate::withPingSent(bool pingSent) {
-  TransmitStatusUpdate update;
-  update.pingSent = new bool(pingSent);
-  return update;
-}
-
-Transmitter::TransmitStatusUpdate
-Transmitter::TransmitStatusUpdate::withLastClientActivity(uint32_t lastClientActivity) {
-  TransmitStatusUpdate update;
-  update.lastClientActivity = new uint32_t(lastClientActivity);
-  return update;
-}
-
-Transmitter::TransmitStatusUpdate
-Transmitter::TransmitStatusUpdate::withLastServerActivity(uint32_t lastServerActivity) {
-  TransmitStatusUpdate update;
-  update.lastServerActivity = new uint32_t(lastServerActivity);
-  return update;
-}
-
-Transmitter::TransmitStatusUpdate
-Transmitter::TransmitStatusUpdate::withDisconnectReason(DisconnectReason disconnectReason) {
-  TransmitStatusUpdate update;
-  update.disconnectReason = new DisconnectReason(disconnectReason);
-  return update;
-}
-
-Transmitter::TransmitStatusUpdate::~TransmitStatusUpdate() {
-  delete bytesSent;
-  delete pingSent;
-  delete lastClientActivity;
-  delete lastServerActivity;
-  delete disconnectReason;
-}
-
-Transmitter::TransmitStatus::TransmitStatus()
-  : _bytesSent(0), _pingSent(false), _lastClientActivity(0),
-    _lastServerActivity(0), _disconnectReason(DisconnectReason::USER_OK) {}
-
-void Transmitter::TransmitStatus::update(const TransmitStatusUpdate& update) {
-  if (update.bytesSent)
-    _bytesSent = *update.bytesSent;
-  if (update.pingSent)
-    _pingSent = *update.pingSent;
-  if (update.lastClientActivity)
-    _lastClientActivity = *update.lastClientActivity;
-  if (update.lastServerActivity)
-    _lastServerActivity = *update.lastServerActivity;
-  if (update.disconnectReason)
-    _disconnectReason = *update.disconnectReason;
-}
-
-template <typename... Args>
-Transmitter::OutboundPacket::OutboundPacket(uint32_t t, MQTTCore::MQTTErrors& error,
-                                            uint16_t packetID, Args&&... args)
-  : transmit_time(t),
-    packet(error, packetID, std::forward<Args>(args)...) {}
+// Other methods...
 
 } // namespace MQTTTransport
