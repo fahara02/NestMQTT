@@ -51,6 +51,7 @@ private:
   StateMachine::State _clientState;
   StateMachine _statemachine;
   MQTTClientDetails::MqttClientCfg _clientcfg;
+  std::vector<CfgObserver *> observers;
   MQTTTransport::Transport *_transport;
   MQTTTransport::Transmitter *_tx;
   MQTTTransport::Receiver *_rx;
@@ -110,6 +111,14 @@ private:
   }
 
 public:
+  void addObserver(CfgObserver *observer) { observers.push_back(observer); }
+  void updateConfig(const MQTTClientDetails::MqttClientCfg &newConfig) {
+    _clientcfg = newConfig;
+    // Notify all observers
+    for (CfgObserver *observer : observers) {
+      observer->updateConfig(newConfig);
+    }
+  }
   StateMachine::State getClientState() const { return _clientState; }
 };
 

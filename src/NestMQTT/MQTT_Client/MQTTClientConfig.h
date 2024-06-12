@@ -60,5 +60,11 @@ struct MqttClientCfg {
   const char *path;
 };
 
+class CfgObserver {
+public:
+  virtual void
+  updateConfig(const MQTTClientDetails::MqttClientCfg &newConfig) = 0;
+};
+
 } // namespace MQTTClientDetails
 #endif

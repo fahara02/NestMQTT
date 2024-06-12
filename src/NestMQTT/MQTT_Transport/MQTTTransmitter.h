@@ -17,15 +17,19 @@ class MqttClient;
 
 namespace MQTTTransport {
 
-class Transmitter {
+class Transmitter : public CfgObserver {
 public:
   // Constructor
   template <typename... Args> Transmitter(MqttClient *client, Args &&...args);
 
   // Destructor
   ~Transmitter() {}
-  bool
-  sendConnectionRequest(const MQTTClientDetails ::MqttClientCfg &clientCfg);
+  virtual void
+  updateConfig(const MQTTClientDetails::MqttClientCfg &newConfig) override {
+    _clientCfg = newConfig;
+    // You can perform any necessary actions here
+  }
+  bool sendConnectionRequest();
   int _sendPacket();
   template <typename... Args> bool addPacket(Args &&...args);
   template <typename... Args> bool _addPacketFront(Args &&...args);
@@ -39,6 +43,7 @@ public:
 private:
   ControlPacketType parseControlPacketType(unsigned int value);
   MqttClient *_client;
+  MQTTClientDetails ::MqttClientCfg _clientCfg;
   uint32_t _transmitTime;
   uint16_t _packetID;
 
