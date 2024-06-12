@@ -77,7 +77,7 @@ public:
   Packet(MQTTErrors &error, MQTTPacketType type);
 
   // Constructor for PUBACK, PUBREC, PUBREL, PUBCOMP
-  Packet(MQTTErrors &error, MQTTPacketType type, uint16_t packetId);
+  Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type);
 
   // Destructor
   ~Packet();

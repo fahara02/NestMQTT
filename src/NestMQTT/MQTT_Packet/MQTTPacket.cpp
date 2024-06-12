@@ -252,7 +252,7 @@ Packet::Packet(MQTTErrors &error, MQTTPacketType type)
   error = MQTTErrors::OK;
 }
 // PUBACK, PUBREC, PUBREL, PUBCOMP
-Packet::Packet(MQTTErrors &error, MQTTPacketType type, uint16_t packetId)
+Packet::Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type)
     : _packetId(packetId), _packetData(nullptr), _packetSize(0),
       _payloadIndex(0), _payloadStartIndex(0), _payloadEndIndex(0),
       _getPayload(nullptr) {
