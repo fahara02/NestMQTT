@@ -55,11 +55,11 @@ bool Packet::removable() const {
   return false;
 }
 // CONNECT
-Packet::Packet(MQTTErrors &error, bool cleanSession, const char *username,
-               const char *password, const char *willTopic, bool willRetain,
-               uint8_t willQos, const uint8_t *willPayload,
-               uint16_t willPayloadLength, uint16_t keepAlive,
-               const char *clientId)
+Packet::Packet(MQTTErrors &error, uint16_t packetId, bool cleanSession,
+               const char *username, const char *password,
+               const char *willTopic, bool willRetain, uint8_t willQos,
+               const uint8_t *willPayload, uint16_t willPayloadLength,
+               uint16_t keepAlive, const char *clientId)
     : _error(error), _packetId(0), _packetData(nullptr), _packetSize(0),
       _payloadIndex(0), _payloadStartIndex(0), _payloadEndIndex(0),
       _subscription{}, _subscriptionPtr(nullptr), _getPayload(nullptr) {
@@ -236,21 +236,7 @@ Packet::Packet(MQTTErrors &error, // NOLINT(runtime/references)
       _unsubscriptionPtr(&_unsubscription), _getPayload(nullptr) {
   _createUnsubscribe(error, _unsubscription);
 }
-// PING, DISCONNECT
-Packet::Packet(MQTTErrors &error, MQTTPacketType type)
-    : _packetId(0), _packetData(nullptr), _packetSize(0), _payloadIndex(0),
-      _payloadStartIndex(0), _payloadEndIndex(0), _getPayload(nullptr) {
-  size_t remainingLength = 0;
 
-  if (!_allocateMemory(remainingLength, false)) {
-    error = MQTTErrors::OUT_OF_MEMORY;
-    return;
-  }
-
-  _packetData[0] = type;
-
-  error = MQTTErrors::OK;
-}
 // PUBACK, PUBREC, PUBREL, PUBCOMP
 Packet::Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type)
     : _packetId(packetId), _packetData(nullptr), _packetSize(0),
@@ -276,7 +262,21 @@ Packet::Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type)
 
   error = MQTTErrors::OK;
 }
+// PING, DISCONNECT
+// Packet::Packet(MQTTErrors &error, MQTTPacketType type)
+//     : _packetId(0), _packetData(nullptr), _packetSize(0), _payloadIndex(0),
+//       _payloadStartIndex(0), _payloadEndIndex(0), _getPayload(nullptr) {
+//   size_t remainingLength = 0;
 
+//   if (!_allocateMemory(remainingLength, false)) {
+//     error = MQTTErrors::OUT_OF_MEMORY;
+//     return;
+//   }
+
+//   _packetData[0] = type;
+
+//   error = MQTTErrors::OK;
+// }
 Packet &Packet::operator=(const Packet &other) {
   if (this != &other) {
     _packetId = other._packetId;

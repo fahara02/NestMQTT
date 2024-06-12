@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 using namespace MQTTCore;
+using namespace MQTTPacket;
 using namespace MQTTClientDetails;
 
 // Forward declaration of MqttClient and its inner struct
@@ -81,7 +82,7 @@ private:
 
   struct OutboundPacket {
     uint32_t transmit_time;
-    MQTTPacket::Packet packet;
+    Packet packet;
 
     template <typename... Args>
     OutboundPacket(uint32_t t, MQTTCore::MQTTErrors &error, uint16_t packetID,

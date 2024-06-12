@@ -44,9 +44,9 @@ private:
 
 public:
   // Constructor for CONNECT
-  Packet(MQTTErrors &error, bool cleanSession, const char *username,
-         const char *password, const char *willTopic, bool willRetain,
-         uint8_t willQos, const uint8_t *willPayload,
+  Packet(MQTTErrors &error, uint16_t packetId, bool cleanSession,
+         const char *username, const char *password, const char *willTopic,
+         bool willRetain, uint8_t willQos, const uint8_t *willPayload,
          uint16_t willPayloadLength, uint16_t keepAlive, const char *clientId);
 
   // Constructor for PUBLISH
@@ -73,11 +73,11 @@ public:
          uint16_t packetId, const char *topic1, const char *topic2,
          Args &&...args);
 
-  // Constructor for PING, DISCONNECT
-  Packet(MQTTErrors &error, MQTTPacketType type);
-
   // Constructor for PUBACK, PUBREC, PUBREL, PUBCOMP
   Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type);
+
+  // Constructor for PING, DISCONNECT
+  // Packet(MQTTErrors &error, MQTTPacketType type);
 
   // Destructor
   ~Packet();
