@@ -137,6 +137,40 @@ public:
 
     return bytesNeeded;
   }
+static void fillTwoBytes(uint8_t *data, uint16_t value) {
+  data[0] = static_cast<uint8_t>((value >> 8) & 0xFF);
+  data[1] = static_cast<uint8_t>(value & 0xFF);
+}
+  
+static void fillMQTTString(uint8_t *data, const char *str) {
+  size_t length = strlen(str);
+  fillTwoBytes(data, static_cast<uint16_t>(length));
+  memcpy(&data[2], str, length);
+}
+
+
+
+static size_t fillRemainingLength(uint8_t *data, size_t length) {
+  size_t index = 0;
+  do {
+    uint8_t encodedByte = length % 128;
+    length /= 128;
+    if (length > 0)
+      encodedByte |= 0x80;
+    data[index++] = encodedByte;
+  } while (length > 0);
+  return index;
+}
+
+
+
+
+
+
+
+
+
+
 };
 
 #endif

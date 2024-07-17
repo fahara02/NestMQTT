@@ -2,6 +2,7 @@
 #include "MQTTClient.h"
 #include "MQTTCore.h"
 #include "MQTTTransmitter.h"
+#include "MQTTFixedHeader.h"
 #include "sdkconfig.h"
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>

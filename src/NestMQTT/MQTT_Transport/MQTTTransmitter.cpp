@@ -75,14 +75,14 @@ int Transmitter::_sendPacket() {
 }
 
 template <typename... Args> bool Transmitter::addPacket(Args &&...args) {
-  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
+  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::SUCCESS);
 
   OutboundPacket transmitPacket(_transmitTime, error,
                                 std::forward<Args>(args)...);
 
   _registry.packet_queue.pushBack(
       QueuedPacket{nullptr, 0, MQTT_QUEUED_UNSENT, 0, DISCONNECT});
-  if (error != MQTTCore::MQTTErrors::OK) {
+  if (error != MQTTCore::MQTTErrors::SUCCESS) {
     return false; // Failed to create packet
   }
   if (!transmitBuffer.pushBack(transmitPacket)) {
@@ -92,11 +92,11 @@ template <typename... Args> bool Transmitter::addPacket(Args &&...args) {
 }
 
 template <typename... Args> bool Transmitter::_addPacketFront(Args &&...args) {
-  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::OK);
+  MQTTCore::MQTTErrors error(MQTTCore::MQTTErrors::SUCCESS);
 
   OutboundPacket transmitPacket(_transmitTime, error,
                                 std::forward<Args>(args)...);
-  if (error != MQTTCore::MQTTErrors::OK) {
+  if (error != MQTTCore::MQTTErrors::SUCCESS) {
     return false; // Failed to create packet
   }
   if (!transmitBuffer.pushFront(transmitPacket)) {

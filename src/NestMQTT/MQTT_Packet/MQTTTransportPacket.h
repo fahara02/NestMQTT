@@ -99,6 +99,18 @@ private:
 
   // Base case for fillItems
   void fillItems(size_t &) {}
+
+// public:
+//   uint32_t calculateRemainingLength() const {
+//     uint32_t remainingLength = 2; // Initial length for Packet Identifier
+
+//     // Calculate remaining length
+//     for (size_t i = 0; i < numberTopics; ++i) {
+//       remainingLength += 2 + strlen(this->list[i].topic) + 1;
+//     }
+
+//     return remainingLength;
+//   }
 };
 
 struct UnsubscribeItem {

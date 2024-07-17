@@ -39,7 +39,7 @@ enum class MQTTErrors {
   CONNECTION_REFUSED,
   SUBSCRIBE_FAILED,
   CONNECTION_CLOSED,
-  OK = 1
+  SUCCESS = 1
 };
 
 class MQTTError {
@@ -96,7 +96,7 @@ private:
       {MQTTErrors::CONNECTION_REFUSED, "Connection refused"},
       {MQTTErrors::SUBSCRIBE_FAILED, "Subscribe failed"},
       {MQTTErrors::CONNECTION_CLOSED, "Connection closed"},
-      {MQTTErrors::OK, "OK"}};
+      {MQTTErrors::SUCCESS , "OK"}};
   // static const std::unordered_map<MQTTErrors, std::string> error_strings;
 };
 

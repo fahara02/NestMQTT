@@ -147,6 +147,55 @@ constexpr struct {
   const uint8_t RESERVED2_RESERVED = 0x00;
 } HeaderFlag;
 
+// enum class PacketType : uint8_t {
+//   RESERVED1 = 0,
+//   CONNECT = 1 << 4,
+//   CONNACK = 2 << 4,
+//   PUBLISH = 3 << 4,
+//   PUBACK = 4 << 4,
+//   PUBREC = 5 << 4,
+//   PUBREL = 6 << 4,
+//   PUBCOMP = 7 << 4,
+//   SUBSCRIBE = 8 << 4,
+//   SUBACK = 9 << 4,
+//   UNSUBSCRIBE = 10 << 4,
+//   UNSUBACK = 11 << 4,
+//   PINGREQ = 12 << 4,
+//   PINGRESP = 13 << 4,
+//   DISCONNECT = 14 << 4,
+//   RESERVED2 = 1 << 4
+// };
+
+// enum class HeaderFlag : uint8_t {
+//   CONNECT_RESERVED = 0x00,
+//   CONNACK_RESERVED = 0x00,
+//   PUBLISH_DUP = 0x08,
+//   PUBLISH_QOS0 = 0x00,
+//   PUBLISH_QOS1 = 0x02,
+//   PUBLISH_QOS2 = 0x04,
+//   PUBLISH_QOSRESERVED = 0x06,
+//   PUBLISH_RETAIN = 0x01,
+//   PUBACK_RESERVED = 0x00,
+//   PUBREC_RESERVED = 0x00,
+//   PUBREL_RESERVED = 0x02,
+//   PUBCOMP_RESERVED = 0x00,
+//   SUBSCRIBE_RESERVED = 0x02,
+//   SUBACK_RESERVED = 0x00,
+//   UNSUBSCRIBE_RESERVED = 0x02,
+//   UNSUBACK_RESERVED = 0x00,
+//   PINGREQ_RESERVED = 0x00,
+//   PINGRESP_RESERVED = 0x00,
+//   DISCONNECT_RESERVED = 0x00,
+//   RESERVED2_RESERVED = 0x00
+// };
+
+
+
+
+
+
+
+
 constexpr struct {
   const uint8_t USERNAME = 0x80;
   const uint8_t PASSWORD = 0x40;
