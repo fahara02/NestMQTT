@@ -44,9 +44,9 @@ struct Subscription {
   // Constructor for multiple topics using a list
   Subscription(size_t topics, const SubscribeItem* itemList)
       : numberTopics(topics) {
-
-    // static_assert(topics <= MAX_TOPICS, "Too many topics specified");
-
+    if (topics > MAX_TOPICS) {
+      throw std::runtime_error("Too many topics specified");
+    }
     for (size_t i = 0; i < topics; ++i) {
       list[i] = itemList[i];
     }
@@ -115,37 +115,6 @@ struct Subscription {
   }
 
 private:
-  // Add a new topic
-  bool addTopic(const char* topic, uint8_t qos) {
-    if (numberTopics >= MAX_TOPICS) {
-      return false;  // Cannot add more topics
-    }
-    strncpy(list[numberTopics].topic, topic, MAX_TOPIC_LENGTH - 1);
-    list[numberTopics].topic[MAX_TOPIC_LENGTH - 1]
-        = '\0';  // Ensure null-terminated
-    list[numberTopics].qos = qos;
-    ++numberTopics;
-    return true;
-  }
-
-  // Remove a topic
-  bool removeTopic(const char* topic) {
-    for (size_t i = 0; i < numberTopics; ++i) {
-      if (strncmp(list[i].topic, topic, MAX_TOPIC_LENGTH) == 0) {
-        // Shift remaining topics down
-        for (size_t j = i; j < numberTopics - 1; ++j) {
-          list[j] = list[j + 1];
-        }
-        --numberTopics;
-        return true;
-      }
-    }
-    return false;  // Topic not found
-  }
-
-  // Helper function to clear all topics
-  void clear() { numberTopics = 0; }
-
   // Helper function to fill SubscribeItem array
   template <typename... Args>
   void fillItems(size_t& index, const char* topic, uint8_t qos,
@@ -176,4 +145,4 @@ private:
 };
 }  // namespace MQTTPacket
 
-#endif  // TRANSPORT_PACKETS_H_
+#endif

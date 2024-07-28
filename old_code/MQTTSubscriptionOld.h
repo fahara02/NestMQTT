@@ -39,30 +39,42 @@ struct Subscription {
   size_t numberTopics;
 
   // Default constructor
-  Subscription() : numberTopics(0) {}
+  Subscription() : numberTopics(1) {
+    strncpy(list[0].topic, "", MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
+    list[0].qos = 0;
+  }
 
   // Constructor for multiple topics using a list
   Subscription(size_t topics, const SubscribeItem* itemList)
       : numberTopics(topics) {
-
-    // static_assert(topics <= MAX_TOPICS, "Too many topics specified");
-
+    if (topics > MAX_TOPICS) {
+      // throw std::runtime_error("Too many topics specified");
+    }
     for (size_t i = 0; i < topics; ++i) {
-      list[i] = itemList[i];
+      strncpy(list[i].topic, itemList[i].topic, MAX_TOPIC_LENGTH - 1);
+      list[i].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
+      list[i].qos = itemList[i].qos;
     }
   }
 
   // Constructor for a single topic and qos
   Subscription(const char* topic, uint8_t qos = 0) : numberTopics(1) {
-    list[0] = SubscribeItem(topic, qos);
+    list[0].qos = qos;
+    strncpy(list[0].topic, topic, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
   }
 
   // Constructor for exactly two topics, no default values
   Subscription(const char* topic1, uint8_t qos1, const char* topic2,
                uint8_t qos2)
       : numberTopics(2) {
-    list[0] = SubscribeItem(topic1, qos1);
-    list[1] = SubscribeItem(topic2, qos2);
+    list[0].qos = qos1;
+    strncpy(list[0].topic, topic1, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
+    list[1].qos = qos2;
+    strncpy(list[1].topic, topic2, MAX_TOPIC_LENGTH - 1);
+    list[1].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
   }
 
   // Constructor for more than two topics
@@ -75,13 +87,16 @@ struct Subscription {
     static_assert((sizeof...(Args) + 2) / 2 <= MAX_TOPICS,
                   "Too many topics specified");
 
-    list[0] = SubscribeItem(topic1, qos1);
-    list[1] = SubscribeItem(topic2, qos2);
+    list[0].qos = qos1;
+    strncpy(list[0].topic, topic1, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
+    list[1].qos = qos2;
+    strncpy(list[1].topic, topic2, MAX_TOPIC_LENGTH - 1);
+    list[1].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
 
     size_t i = 2;
     fillItems(i, std::forward<Args>(args)...);
   }
-
   // Constructor for more than two topics for unsubscribe case
   template <typename... Args>
   Subscription(const char* topic1, const char* topic2, Args&&... args)
@@ -89,8 +104,10 @@ struct Subscription {
     static_assert(sizeof...(Args) <= MAX_TOPICS - 2,
                   "Too many topics specified");
 
-    list[0] = SubscribeItem(topic1, 0);
-    list[1] = SubscribeItem(topic2, 0);
+    strncpy(list[0].topic, topic1, MAX_TOPIC_LENGTH - 1);
+    list[0].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
+    strncpy(list[1].topic, topic2, MAX_TOPIC_LENGTH - 1);
+    list[1].topic[MAX_TOPIC_LENGTH - 1] = '\0';  // Ensure null-terminated
 
     size_t i = 2;
     fillItems(i, std::forward<Args>(args)...);
@@ -99,7 +116,8 @@ struct Subscription {
   // Copy constructor
   Subscription(const Subscription& other) : numberTopics(other.numberTopics) {
     for (size_t i = 0; i < other.numberTopics; ++i) {
-      list[i] = other.list[i];
+      strncpy(list[i].topic, other.list[i].topic, MAX_TOPIC_LENGTH);
+      list[i].qos = other.list[i].qos;
     }
   }
 
@@ -108,44 +126,14 @@ struct Subscription {
     if (this != &other) {
       numberTopics = other.numberTopics;
       for (size_t i = 0; i < other.numberTopics; ++i) {
-        list[i] = other.list[i];
+        strncpy(list[i].topic, other.list[i].topic, MAX_TOPIC_LENGTH);
+        list[i].qos = other.list[i].qos;
       }
     }
     return *this;
   }
 
 private:
-  // Add a new topic
-  bool addTopic(const char* topic, uint8_t qos) {
-    if (numberTopics >= MAX_TOPICS) {
-      return false;  // Cannot add more topics
-    }
-    strncpy(list[numberTopics].topic, topic, MAX_TOPIC_LENGTH - 1);
-    list[numberTopics].topic[MAX_TOPIC_LENGTH - 1]
-        = '\0';  // Ensure null-terminated
-    list[numberTopics].qos = qos;
-    ++numberTopics;
-    return true;
-  }
-
-  // Remove a topic
-  bool removeTopic(const char* topic) {
-    for (size_t i = 0; i < numberTopics; ++i) {
-      if (strncmp(list[i].topic, topic, MAX_TOPIC_LENGTH) == 0) {
-        // Shift remaining topics down
-        for (size_t j = i; j < numberTopics - 1; ++j) {
-          list[j] = list[j + 1];
-        }
-        --numberTopics;
-        return true;
-      }
-    }
-    return false;  // Topic not found
-  }
-
-  // Helper function to clear all topics
-  void clear() { numberTopics = 0; }
-
   // Helper function to fill SubscribeItem array
   template <typename... Args>
   void fillItems(size_t& index, const char* topic, uint8_t qos,
@@ -174,6 +162,7 @@ private:
   // Base case for fillItems
   void fillItems(size_t&) {}
 };
+
 }  // namespace MQTTPacket
 
 #endif  // TRANSPORT_PACKETS_H_
