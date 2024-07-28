@@ -1,290 +1,519 @@
-// #include "MQTTPacket.h"
-// #include "MQTTAsyncTask.h"
-// #include "MQTTCore.h"
-// #include "MQTTUtility.h"
+#include "MQTTPacket.h"
+#include "MQTTAsyncTask.h"
+#include "MQTTCore.h"
+#include "MQTTUtility.h"
 
-// using namespace MQTTCore;
+using namespace MQTTCore;
 
-// namespace MQTTPacket {
+namespace MQTTPacket {
 
-// Packet::~Packet() { free(_packetData); }
+Packet::~Packet() { free(_packetData); }
 
-// size_t Packet::available(size_t index) {
-//   if (index >= _packetSize)
-//     return 0;
-//   if (!_getPayload)
-//     return _packetSize - index;
-//   return _chunkedAvailable(index);  
-// }
+size_t Packet::available(size_t index) {
+  if (index >= _packetSize)
+    return 0;
+  if (!_getPayload)
+    return _packetSize - index;
+  return _chunkedAvailable(index);
+}
 
-// const uint8_t *Packet::data(size_t index) const {
-//   if (!_getPayload) {
-//     if (!_packetData || index >= _packetSize)
-//       return nullptr;
-//     return &_packetData[index];
-//   }
-//   return _chunkedData(index);
-// }
+const uint8_t *Packet::data(size_t index) const {
+  if (!_getPayload) {
+    if (!_packetData || index >= _packetSize)
+      return nullptr;
+    return &_packetData[index];
+  }
+  return _chunkedData(index);
+}
 
-// size_t Packet::size() const { return _packetSize; }
+size_t Packet::size() const { return _packetSize; }
 
-// void Packet::setDup() {
-//   if (!_packetData)
-//     return;
-//   if (static_cast<uint8_t>(packetType()) != static_cast<uint8_t>(PacketType::PUBLISH))
-//     return;
-//   if (_packetId == 0)
-//     return;
-//   _packetData[0] |= static_cast<uint8_t>(HeaderFlag::PUBLISH_DUP);
-// }
+void Packet::setDup() {
+  if (!_packetData)
+    return;
+  if (packetType() != MQTTCore::PacketType.PUBLISH)
+    return;
+  if (_packetId == 0)
+    return;
+  _packetData[0] |= 0x08;
+}
 
-// uint16_t Packet::packetId() const { return _packetId; }
+uint16_t Packet::packetId() const { return _packetId; }
 
-// MQTTPacketType Packet::packetType() const {
-//   if (_packetData)
-//     return static_cast<MQTTPacketType>(_packetData[0] & 0xF0);
-//   return static_cast<MQTTPacketType>(0);
-// }
+MQTTPacketType Packet::packetType() const {
+  if (_packetData)
+    return static_cast<MQTTPacketType>(_packetData[0] & 0xF0);
+  return static_cast<MQTTPacketType>(0);
+}
 
-// bool Packet::removable() const {
-//   if (_packetId == 0)
-//     return true;
-//   if (static_cast<uint8_t>(packetType()) == static_cast<uint8_t>(PacketType::PUBACK) ||
-//      static_cast<uint8_t> (packetType() )== static_cast<uint8_t>PacketType::PUBCOMP)
-//     return true;
-//   return false;
-// }
+bool Packet::removable() const {
+  if (_packetId == 0)
+    return true;
+  if (packetType() == MQTTCore::PacketType.PUBACK
+      || packetType() == MQTTCore::PacketType.PUBCOMP)
+    return true;
+  return false;
+}
 
-// // CONNECT
-// Packet::Packet(MQTTErrors &error, bool cleanSession, const char *username,
-//                const char *password, const char *willTopic, bool willRetain,
-//                uint8_t willQos, const uint8_t *willPayload,
-//                uint16_t willPayloadLength, uint16_t keepAlive,
-//                const char *clientId)
-//     : _error(error), _packetId(0), _packetData(nullptr), _packetSize(0),
-//       _payloadIndex(0), _payloadStartIndex(0), _payloadEndIndex(0),
-//       _subscription{}, _subscriptionPtr(nullptr), _getPayload(nullptr) {
-//   if (willPayload && willPayloadLength == 0) {
-//     size_t length = strlen(reinterpret_cast<const char *>(willPayload));
-//     willPayloadLength = (length > UINT16_MAX) ? UINT16_MAX : length;
-//   }
-//   if (!clientId || strlen(clientId) == 0) {
-//     error = MQTTErrors::MALFORMED_PARAMETER;
-//     return;
-//   }
+size_t Packet::calculateRemainingLength(const char *clientId,
+                                        const char *username,
+                                        const char *password,
+                                        const char *willTopic,
+                                        uint16_t willPayloadLength
 
-//   size_t remainingLength =
-//       6 + 1 + 1 + 2 + 2 + strlen(clientId) +
-//       (willTopic ? 2 + strlen(willTopic) + 2 + willPayloadLength : 0) +
-//       (username ? 2 + strlen(username) : 0) +
-//       (password ? 2 + strlen(password) : 0);
+) {
+  size_t remainingLength
+      = 6 + 1 + 1 + 2 + 2 + (clientId ? strlen(clientId) : 0)
+        + (willTopic ? 2 + strlen(willTopic) + 2 + willPayloadLength : 0)
+        + (username ? 2 + strlen(username) : 0)
+        + (password ? 2 + strlen(password) : 0);
+  return remainingLength;
+}
+size_t Packet::calculateRemainingLength(
 
-//   if (!_allocateMemory(remainingLength))
-//     return;
-//   if (!_packetData) {
-//     error = MQTTErrors::OUT_OF_MEMORY;
-//     return;
-//   }
+    const char *Topic, uint16_t PayloadLength, uint16_t keepAlive, uint8_t qos
 
-//   _packetData[0] = static_cast<uint8_t>(PacketType::CONNECT);
-//   _packetData[1] = static_cast<uint8_t>(remainingLength);
+) {
 
-//   size_t index = 2;
-//   MQTTUtility::fillMQTTString(&_packetData[index], "MQTT", 4);
-//   index += 4;
-//   _packetData[index++] = 4;
-//   _packetData[index++] = (cleanSession ? 0x02 : 0x00) |
-//                          (willTopic ? 0x04 | (willQos & 0x03) << 3 |
-//                                           (willRetain ? 0x20 : 0x00)
-//                                     : 0x00) |
-//                          (username ? 0x80 : 0x00) |
-//                          (password ? 0x40 : 0x00);
-//   MQTTUtility::fillTwoBytes(&_packetData[index], keepAlive);
-//   index += 2;
-//   MQTTUtility::fillMQTTString(&_packetData[index], clientId);
-//   index += 2 + strlen(clientId);
-//   if (willTopic) {
-//     MQTTUtility::fillMQTTString(&_packetData[index], willTopic);
-//     index += 2 + strlen(willTopic);
-//     MQTTUtility::fillTwoBytes(&_packetData[index], willPayloadLength);
-//     index += 2;
-//     if (willPayloadLength)
-//       memcpy(&_packetData[index], willPayload, willPayloadLength);
-//     index += willPayloadLength;
-//   }
-//   if (username) {
-//     MQTTUtility::fillMQTTString(&_packetData[index], username);
-//     index += 2 + strlen(username);
-//   }
-//   if (password) {
-//     MQTTUtility::fillMQTTString(&_packetData[index], password);
-//     index += 2 + strlen(password);
-//   }
-//   error = MQTTErrors::SUCCESS;
-// }
+  size_t remainingLength
+      = 2 + (Topic ? strlen(Topic) : 0) + (qos ? 2 : 0) + PayloadLength;
+  return remainingLength;
+}
+size_t Packet::calculateRemainingLength(const Subscription &subscription
 
-// // PUBLISH
-// Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
-//                const uint8_t *payload, size_t payloadLength, uint8_t qos,
-//                bool retain)
-//     : _error(error), _packetId(packetId), _packetData(nullptr),
-//       _packetSize(0), _payloadIndex(0), _payloadStartIndex(0),
-//       _payloadEndIndex(0), _subscription{}, _subscriptionPtr(nullptr),
-//       _getPayload(nullptr) {
-//   size_t remainingLength = _fillPublishHeader(packetId, topic, payloadLength,
-//                                               qos, retain);
+) {
+  size_t numberTopics = subscription.numberTopics;
+  size_t remainingLength = 2;  // Initial length for Packet Identifier
 
-//   if (!_allocateMemory(remainingLength))
-//     return;
-//   if (!_packetData) {
-//     error = MQTTErrors::OUT_OF_MEMORY;
-//     return;
-//   }
-//   size_t index = _payloadStartIndex;
-//   if (payload && payloadLength) {
-//     memcpy(&_packetData[index], payload, payloadLength);
-//     index += payloadLength;
-//   }
-//   error = MQTTErrors::SUCCESS;
-// }
+  // Calculate remaining length
+  for (size_t i = 0; i < numberTopics; ++i) {
+    remainingLength += 2 + strlen(subscription.list[i].topic) + 1;
+  }
 
-// Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
-//                MQTTCore::onPayloadInternalCallback payloadCallback,
-//                size_t payloadLength, uint8_t qos, bool retain)
-//     : _error(error), _packetId(packetId), _packetData(nullptr),
-//       _packetSize(0), _payloadIndex(0), _payloadStartIndex(0),
-//       _payloadEndIndex(0), _subscription{}, _subscriptionPtr(nullptr),
-//       _getPayload(payloadCallback) {
-//   size_t remainingLength = _fillPublishHeader(packetId, topic, payloadLength,
-//                                               qos, retain);
+  return remainingLength;
+}
 
-//   if (!_allocateMemory(remainingLength, false))
-//     return;
-//   if (!_packetData) {
-//     error = MQTTErrors::OUT_OF_MEMORY;
-//     return;
-//   }
-//   _payloadEndIndex = _packetSize;
-//   error = MQTTErrors::SUCCESS;
-// }
+// CONNECT
+Packet::Packet(MQTTErrors &error, bool cleanSession, const char *username,
+               const char *password, const char *willTopic, bool willRetain,
+               uint8_t willQos, const uint8_t *willPayload,
+               uint16_t willPayloadLength, uint16_t keepAlive,
+               const char *clientId)
+    : _error(error),
+      _packetId(0),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription{},
+      _subscriptionPtr(nullptr),
+      _getPayload(nullptr) {
+  if (willPayload && willPayloadLength == 0) {
+    size_t length = strlen(reinterpret_cast<const char *>(willPayload));
+    willPayloadLength = (length > UINT16_MAX) ? UINT16_MAX : length;
+  }
+  if (!clientId || strlen(clientId) == 0) {
+    error = MQTTErrors::MALFORMED_PARAMETER;
+    return;
+  }
 
-// size_t Packet::_fillPublishHeader(uint16_t packetId, const char *topic,
-//                                   size_t remainingLength, uint8_t qos,
-//                                   bool retain) {
-//   size_t topicLength = strlen(topic);
-//   remainingLength += 2 + topicLength + (qos > 0 ? 2 : 0);
+  size_t remainingLength = calculateRemainingLength(
+      clientId, username, password, willTopic, willPayloadLength);
 
-//   if (!_allocateMemory(remainingLength))
-//     return remainingLength;
-//   if (!_packetData) {
-//     _error = MQTTErrors::OUT_OF_MEMORY;
-//     return remainingLength;
-//   }
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
 
-//   _packetData[0] = static_cast<uint8_t>(PacketType::PUBLISH) |
-//                    static_cast<uint8_t>(retain ? HeaderFlag::PUBLISH_RETAIN
-//                                               : HeaderFlag::CONNECT_RESERVED) |
-//                    static_cast<uint8_t>(qos == 1 ? HeaderFlag::PUBLISH_QOS1
-//                                                  : qos == 2
-//                                                        ? HeaderFlag::PUBLISH_QOS2
-//                                                        : HeaderFlag::PUBLISH_QOS0);
-//   size_t index = 1;
-//   index += MQTTUtility::fillRemainingLength(&_packetData[index],
-//                                             remainingLength - 1);
-//   MQTTUtility::fillMQTTString(&_packetData[index], topic);
-//   index += 2 + topicLength;
-//   if (qos > 0) {
-//     MQTTUtility::fillTwoBytes(&_packetData[index], packetId);
-//     index += 2;
-//   }
-//   _payloadStartIndex = index;
-//   _payloadEndIndex = _payloadStartIndex + remainingLength - _payloadStartIndex;
-//   _error = MQTTErrors::SUCCESS;
-//   return remainingLength;
-// }
+  size_t pos = 0;
+  _packetData[pos++]
+      = MQTTCore::PacketType.CONNECT | MQTTCore::HeaderFlag.CONNECT_RESERVED;
+  pos += MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[pos]);
+  pos += MQTTUtility::encodeString(PROTOCOL, &_packetData[pos]);
+  _packetData[pos++] = PROTOCOL_LEVEL;
+  uint8_t connectFlags = 0;
+  if (cleanSession)
+    connectFlags |= MQTTCore::ConnectFlag.CLEAN_SESSION;
+  if (username != nullptr)
+    connectFlags |= MQTTCore::ConnectFlag.USERNAME;
+  if (password != nullptr)
+    connectFlags |= MQTTCore::ConnectFlag.PASSWORD;
+  if (willTopic != nullptr) {
+    connectFlags |= MQTTCore::ConnectFlag.WILL;
+    if (willRetain)
+      connectFlags |= MQTTCore::ConnectFlag.WILL_RETAIN;
+    switch (willQos) {
+      case 0:
+        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS0;
+        break;
+      case 1:
+        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS1;
+        break;
+      case 2:
+        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS2;
+        break;
+    }
+  }
+  _packetData[pos++] = connectFlags;
+  _packetData[pos++] = keepAlive >> 8;
+  _packetData[pos++] = keepAlive & 0xFF;
+  // PAYLOAD
+  // client ID
+  pos += MQTTUtility::encodeString(clientId, &_packetData[pos]);
+  // will
+  if (willTopic != nullptr && willPayload != nullptr) {
+    pos += MQTTUtility::encodeString(willTopic, &_packetData[pos]);
+    _packetData[pos++] = willPayloadLength >> 8;
+    _packetData[pos++] = willPayloadLength & 0xFF;
+    memcpy(&_packetData[pos], willPayload, willPayloadLength);
+    pos += willPayloadLength;
+  }
+  // credentials
+  if (username != nullptr)
+    pos += MQTTUtility::encodeString(username, &_packetData[pos]);
+  if (password != nullptr)
+    pos += MQTTUtility::encodeString(password, &_packetData[pos]);
 
-// Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
-//                uint8_t qos)
-//     : _error(error), _packetId(packetId), _packetData(nullptr),
-//       _packetSize(0), _payloadIndex(0), _payloadStartIndex(0),
-//       _payloadEndIndex(0), _subscription{}, _subscriptionPtr(nullptr),
-//       _getPayload(nullptr) {
-//   _createSubscribe(error, Subscription(topic, qos));
-// }
+  error = MQTTErrors::SUCCESS;
+}
+// PUBLISH
+Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
+               const uint8_t *payload, size_t payloadLength, uint8_t qos,
+               bool retain)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _getPayload(nullptr) {
 
-// Packet::Packet(MQTTErrors &error, uint16_t packetId,
-//                const Subscription &subscription)
-//     : _error(error), _packetId(packetId), _packetData(nullptr),
-//       _packetSize(0), _payloadIndex(0), _payloadStartIndex(0),
-//       _payloadEndIndex(0), _subscription(subscription),
-//       _subscriptionPtr(nullptr), _getPayload(nullptr) {
-//   _createSubscribe(error, subscription);
-// }
+  size_t remainingLength
+      = calculateRemainingLength(topic, payloadLength, 0, qos);
 
-// Packet::Packet(MQTTErrors &error, uint16_t packetId,
-//                std::vector<Subscription> &subscription)
-//     : _error(error), _packetId(packetId), _packetData(nullptr),
-//       _packetSize(0), _payloadIndex(0), _payloadStartIndex(0),
-//       _payloadEndIndex(0), _subscriptionPtr(&subscription),
-//       _getPayload(nullptr) {
-//   if (subscription.empty()) {
-//     error = MQTTErrors::MALFORMED_PARAMETER;
-//     return;
-//   }
-//   size_t remainingLength = 2;
-//   for (const auto &sub : subscription)
-//     remainingLength += 2 + strlen(sub.topic) + 1;
-//   if (!_allocateMemory(remainingLength))
-//     return;
-//   if (!_packetData) {
-//     error = MQTTErrors::OUT_OF_MEMORY;
-//     return;
-//   }
-//   _packetData[0] = static_cast<uint8_t>(PacketType::SUBSCRIBE) |
-//                    static_cast<uint8_t>(HeaderFlag::SUBSCRIBE_RESERVED) |
-//                    static_cast<uint8_t>(HeaderFlag::SUBSCRIBE_QOS1);
-//   size_t index = 1;
-//   index += MQTTUtility::fillRemainingLength(&_packetData[index],
-//                                             remainingLength - 1);
-//   MQTTUtility::fillTwoBytes(&_packetData[index], packetId);
-//   index += 2;
-//   for (const auto &sub : subscription) {
-//     MQTTUtility::fillMQTTString(&_packetData[index], sub.topic);
-//     index += 2 + strlen(sub.topic);
-//     _packetData[index++] = sub.qos;
-//   }
-//   error = MQTTErrors::SUCCESS;
-// }
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
 
-// void Packet::_createSubscribe(MQTTErrors &error, const Subscription &subscription) {
-//   if (!subscription.topic) {
-//     error = MQTTErrors::MALFORMED_PARAMETER;
-//     return;
-//   }
+  size_t pos
+      = _fillPublishHeader(packetId, topic, remainingLength, qos, retain);
+  if (payloadLength) {
+    memcpy(&_packetData[pos], payload, payloadLength);
+    pos += payloadLength;
+  }
 
-//   size_t remainingLength = 2 + 2 + strlen(subscription.topic) + 1;
+  error = MQTTErrors::SUCCESS;
+}
+// PUBLISH
+Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
+               MQTTCore::onPayloadInternalCallback payloadCallback,
+               size_t payloadLength, uint8_t qos, bool retain)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _getPayload(payloadCallback) {
 
-//   if (!_allocateMemory(remainingLength))
-//     return;
-//   if (!_packetData) {
-//     error = MQTTErrors::OUT_OF_MEMORY;
-//     return;
-//   }
+  size_t remainingLength
+      = calculateRemainingLength(topic, payloadLength, 0, qos);
 
-//   _packetData[0] = static_cast<uint8_t>(PacketType::SUBSCRIBE) |
-//                    static_cast<uint8_t>(HeaderFlag::SUBSCRIBE_RESERVED) |
-//                    static_cast<uint8_t>(HeaderFlag::SUBSCRIBE_QOS1);
+  if (qos == 0) {
+    // remainingLength -= 2;
+    _packetId = 0;
+  }
 
-//   size_t index = 1;
-//   index += MQTTUtility::fillRemainingLength(&_packetData[index],
-//                                             remainingLength - 1);
-//   MQTTUtility::fillTwoBytes(&_packetData[index], _packetId);
-//   index += 2;
-//   MQTTUtility::fillMQTTString(&_packetData[index], subscription.topic);
-//   index += 2 + strlen(subscription.topic);
-//   _packetData[index++] = subscription.qos;
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
 
-//   error = MQTTErrors::SUCCESS;
-// }
+  size_t pos
+      = _fillPublishHeader(packetId, topic, remainingLength, qos, retain);
+  _payloadStartIndex = pos;
+  _payloadEndIndex = _payloadStartIndex + payloadLength;
 
-// } // namespace MQTTPacket
+  error = MQTTErrors::SUCCESS;
+}
+// SUBSCRIBE
+Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic,
+               uint8_t qos)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription(Subscription(topic, qos)),
+      _subscriptionPtr(&_subscription),
+
+      _getPayload(nullptr) {
+  _updateSubscribe(error, Subscription_task::SUBSCRIBE, _subscription);
+}
+// SUBSCRIBE
+Packet::Packet(MQTTErrors &error, uint16_t packetId,
+               const Subscription &subscription)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription(subscription),
+      _subscriptionPtr(&_subscription),
+
+      _getPayload(nullptr) {
+  _updateSubscribe(error, Subscription_task::SUBSCRIBE, _subscription);
+}
+// SUBSCRIBE
+template <typename... Args>
+Packet::Packet(MQTTCore::MQTTErrors &error, uint16_t packetId,
+               const char *topic1, uint8_t qos1, const char *topic2,
+               uint8_t qos2, Args &&...args)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription(Subscription(topic1, qos1, topic2, qos2,
+                                 std::forward<Args>(args)...)),
+      _subscriptionPtr(&_subscription),
+
+      _getPayload(nullptr) {
+  _updateSubscribe(error, Subscription_task::SUBSCRIBE, _subscription);
+}
+
+// UNSUBSCRIBE
+Packet::Packet(MQTTErrors &error, uint16_t packetId, const char *topic)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription(Subscription(topic)),
+      _subscriptionPtr(&_subscription),
+
+      _getPayload(nullptr) {
+  _updateSubscribe(error, Subscription_task::UNSUBSCRIBE, _subscription);
+}
+// UNSUBSCRIBE
+template <typename... Args>
+Packet::Packet(MQTTErrors &error,  // NOLINT(runtime/references)
+               uint16_t packetId, const char *topic1, const char *topic2,
+               Args &&...args)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _subscription(Subscription(topic1, topic2, std::forward<Args>(args)...)),
+
+      _subscriptionPtr(&_subscription),
+
+      _getPayload(nullptr) {
+  _updateSubscribe(error, Subscription_task::UNSUBSCRIBE, _subscription);
+}
+
+// PUBACK, PUBREC, PUBREL, PUBCOMP
+Packet::Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type)
+    : _packetId(packetId),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _getPayload(nullptr) {
+  size_t remainingLength = 2;
+
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
+
+  size_t pos = 0;
+  _packetData[pos] = type;
+  if (type == PacketType.PUBREL) {
+    _packetData[pos++] |= HeaderFlag.PUBREL_RESERVED;
+  } else {
+    pos++;
+  }
+  pos += MQTTUtility::encodeRemainingLength(2, &_packetData[pos]);
+  _packetData[pos++] = packetId >> 8;
+  _packetData[pos] = packetId & 0xFF;
+
+  error = MQTTErrors::SUCCESS;
+}
+// PING, DISCONNECT
+Packet::Packet(MQTTErrors &error, MQTTPacketType type)
+    : _packetId(0),
+      _packetData(nullptr),
+      _packetSize(0),
+      _payloadIndex(0),
+      _payloadStartIndex(0),
+      _payloadEndIndex(0),
+      _getPayload(nullptr) {
+  size_t remainingLength = 0;
+
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
+
+  _packetData[0] = type;
+
+  error = MQTTErrors::SUCCESS;
+}
+Packet &Packet::operator=(const Packet &other) {
+  if (this != &other) {
+    _packetId = other._packetId;
+    _packetSize = other._packetSize;
+    _packetData = static_cast<uint8_t *>(realloc(_packetData, _packetSize));
+    if (_packetData) {
+      memcpy(_packetData, other._packetData, _packetSize);
+    }
+  }
+  return *this;
+}
+
+bool Packet::isEmpty() const {
+  return (_packetData == nullptr || _packetSize == 0);
+}
+
+bool Packet::isValid() const {
+  return (_packetData != nullptr && _packetSize > 0);
+}
+
+size_t Packet::_chunkedAvailable(size_t index) {
+  // index vs size check done in 'available(index)'
+
+  // index points to header or first payload byte
+  if (index < _payloadIndex) {
+    if (_packetSize > _payloadIndex && _payloadEndIndex != 0) {
+      size_t copied
+          = _getPayload(&_packetData[_payloadIndex],
+                        std::min(static_cast<size_t>(TX_BUFFER_MAX_SIZE_BYTE),
+                                 _packetSize - _payloadStartIndex),
+                        index);
+      _payloadStartIndex = _payloadIndex;
+      _payloadEndIndex = _payloadStartIndex + copied - 1;
+    }
+
+    // index points to payload unavailable
+  } else if (index > _payloadEndIndex || _payloadStartIndex > index) {
+    _payloadStartIndex = index;
+    size_t copied
+        = _getPayload(&_packetData[_payloadIndex],
+                      std::min(static_cast<size_t>(TX_BUFFER_MAX_SIZE_BYTE),
+                               _packetSize - _payloadStartIndex),
+                      index);
+    _payloadEndIndex = _payloadStartIndex + copied - 1;
+  }
+
+  // now index points to header or payload available
+  return _payloadEndIndex - index + 1;
+}
+
+const uint8_t *Packet::_chunkedData(size_t index) const {
+  return &_packetData[index];
+}
+
+bool Packet::_allocateMemory(size_t remainingLength, bool check) {
+
+  if (check && MQTT_GET_FREE_MEMORY() < MQTT_MIN_FREE_MEMORY) {
+    // emc_log_w("Packet buffer not allocated: low memory");
+    return false;
+  }
+  _packetSize = 1 + MQTTUtility::remainingLengthFieldSize(remainingLength)
+                + remainingLength;
+  _packetData = reinterpret_cast<uint8_t *>(malloc(_packetSize));
+  if (!_packetData) {
+    _packetSize = 0;
+    // emc_log_w("Alloc failed (l:%zu)", _size);
+    return false;
+  }
+  // emc_log_i("Alloc (l:%zu)", _size);
+  memset(_packetData, 0, _packetSize);
+  return true;
+}
+size_t Packet::_fillPublishHeader(uint16_t packetId, const char *topic,
+                                  size_t remainingLength, uint8_t qos,
+                                  bool retain) {
+  size_t index = 0;
+
+  // FIXED HEADER
+  _packetData[index] = MQTTCore::PacketType.PUBLISH;
+  if (retain)
+    _packetData[index] |= MQTTCore::HeaderFlag.PUBLISH_RETAIN;
+  if (qos == 0) {
+    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS0;
+  } else if (qos == 1) {
+    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS1;
+  } else if (qos == 2) {
+    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS2;
+  }
+  index += MQTTUtility::encodeRemainingLength(remainingLength,
+                                              &_packetData[index]);
+
+  // VARIABLE HEADER
+  index += MQTTUtility::encodeString(topic, &_packetData[index]);
+  if (qos > 0) {
+    _packetData[index++] = packetId >> 8;
+    _packetData[index++] = packetId & 0xFF;
+  }
+
+  return index;
+}
+
+void Packet::_updateSubscribe(MQTTErrors &error, Subscription_task task,
+                              const Subscription &subscription) {
+  // Determine the packet type and reserved flags based on the task
+  uint8_t packetType;
+  if (task == Subscription_task::SUBSCRIBE) {
+    packetType = MQTTCore::PacketType.SUBSCRIBE
+                 | MQTTCore::HeaderFlag.SUBSCRIBE_RESERVED;
+  } else if (task == Subscription_task::UNSUBSCRIBE) {
+    packetType = MQTTCore::PacketType.UNSUBSCRIBE
+                 | MQTTCore::HeaderFlag.UNSUBSCRIBE_RESERVED;
+  } else {
+    error = MQTTErrors::UNKNOWN;
+    return;
+  }
+
+  // Calculate the remaining length
+  size_t remainingLength = calculateRemainingLength(subscription);
+
+  // Allocate memory for the packet
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
+
+  // Begin constructing the packet
+  size_t pos = 0;
+  _packetData[pos++] = packetType;
+  pos += MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[pos]);
+  _packetData[pos++] = _packetId >> 8;
+  _packetData[pos++] = _packetId & 0xFF;
+
+  // Process each topic in the subscription
+  size_t numberTopics = subscription.numberTopics;
+  for (size_t i = 0; i < numberTopics; ++i) {
+    pos += MQTTUtility::encodeString(subscription.list[i].topic,
+                                     &_packetData[pos]);
+
+    // Only add QoS for subscribe operations
+    if (task == Subscription_task::SUBSCRIBE) {
+      _packetData[pos++] = subscription.list[i].qos;
+    }
+  }
+
+  error = MQTTErrors::SUCCESS;
+}
+
+}  // namespace MQTTPacket
