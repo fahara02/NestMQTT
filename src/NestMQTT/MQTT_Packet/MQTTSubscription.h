@@ -1,5 +1,5 @@
-#ifndef MQTT_TRANSPORT_PACKETS_H_
-#define MQTT_TRANSPORT_PACKETS_H_
+#ifndef MQTT_SUBSCRIPTION_H_
+#define MQTT_SUBSCRIPTION_H_
 
 #include <cstring>
 #include <iostream>

@@ -9,7 +9,7 @@
 #include "MQTTCallbacks.h"
 #include "MQTTConstants.h"
 #include "MQTTError.h"
-#include "MQTTTransportPacket.h"
+#include "MQTTSubscription.h"
 
 namespace MQTTPacket {
 
@@ -38,9 +38,6 @@ private:
 
   void _updateSubscribe(MQTTErrors &error, Subscription_task task,
                         const Subscription &subscription);
-  // void _createUnsubscribe(MQTTErrors &error, const Subscription
-  // &subscription);
-  void _buildSubscriptionPacket();
 
 public:
   // Constructor for CONNECT

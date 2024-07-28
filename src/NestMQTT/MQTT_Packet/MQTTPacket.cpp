@@ -472,6 +472,16 @@ size_t Packet::_fillPublishHeader(uint16_t packetId, const char *topic,
 
 void Packet::_updateSubscribe(MQTTErrors &error, Subscription_task task,
                               const Subscription &subscription) {
+
+  // Calculate the remaining length
+  size_t remainingLength = calculateRemainingLength(subscription);
+
+  // Allocate memory for the packet
+  if (!_allocateMemory(remainingLength, false)) {
+    error = MQTTErrors::OUT_OF_MEMORY;
+    return;
+  }
+
   // Determine the packet type and reserved flags based on the task
   uint8_t packetType;
   if (task == Subscription_task::SUBSCRIBE) {
@@ -481,16 +491,7 @@ void Packet::_updateSubscribe(MQTTErrors &error, Subscription_task task,
     packetType = MQTTCore::PacketType.UNSUBSCRIBE
                  | MQTTCore::HeaderFlag.UNSUBSCRIBE_RESERVED;
   } else {
-    error = MQTTErrors::UNKNOWN;
-    return;
-  }
-
-  // Calculate the remaining length
-  size_t remainingLength = calculateRemainingLength(subscription);
-
-  // Allocate memory for the packet
-  if (!_allocateMemory(remainingLength, false)) {
-    error = MQTTErrors::OUT_OF_MEMORY;
+    error = MQTTErrors::SUBSCRIBE_FAILED;
     return;
   }
 
