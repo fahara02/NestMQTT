@@ -113,12 +113,24 @@ struct Subscription {
     }
     return *this;
   }
+  // Check if the topic already exists
+  bool hasTopic(const char* topic) const {
+    for (size_t i = 0; i < numberTopics; ++i) {
+      if (strncmp(list[i].topic, topic, MAX_TOPIC_LENGTH) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
 
 private:
   // Add a new topic
   bool addTopic(const char* topic, uint8_t qos) {
     if (numberTopics >= MAX_TOPICS) {
       return false;  // Cannot add more topics
+    }
+    if (hasTopic(topic)) {
+      return false;  // Topic already exists
     }
     strncpy(list[numberTopics].topic, topic, MAX_TOPIC_LENGTH - 1);
     list[numberTopics].topic[MAX_TOPIC_LENGTH - 1]

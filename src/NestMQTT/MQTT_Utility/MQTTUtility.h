@@ -13,58 +13,59 @@ class MQTTUtility {
 public:
   static ConnackReturnCode mapToConnackReturnCode(uint8_t code) {
     switch (code) {
-    case 0:
-      return ConnackReturnCode::MQTT_CONNACK_ACCEPTED;
-    case 1:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD;
-    case 2:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_IDENTIFIER_REJECTED;
-    case 3:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_NOT_AUTHORIZED;
-    case 4:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_PROTOCOL_VERSION;
-    case 5:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_SERVER_UNAVAILABLE;
-    default:
-      return ConnackReturnCode::MQTT_CONNACK_REFUSED_SERVER_UNAVAILABLE;
+      case 0:
+        return ConnackReturnCode::MQTT_CONNACK_ACCEPTED;
+      case 1:
+        return ConnackReturnCode::
+            MQTT_CONNACK_REFUSED_BAD_USER_NAME_OR_PASSWORD;
+      case 2:
+        return ConnackReturnCode::MQTT_CONNACK_REFUSED_IDENTIFIER_REJECTED;
+      case 3:
+        return ConnackReturnCode::MQTT_CONNACK_REFUSED_NOT_AUTHORIZED;
+      case 4:
+        return ConnackReturnCode::MQTT_CONNACK_REFUSED_PROTOCOL_VERSION;
+      case 5:
+        return ConnackReturnCode::MQTT_CONNACK_REFUSED_SERVER_UNAVAILABLE;
+      default:
+        return ConnackReturnCode::MQTT_CONNACK_REFUSED_SERVER_UNAVAILABLE;
     }
   }
 
   const char *disconnectReasonToString(DisconnectReason reason) {
     switch (reason) {
-    case DisconnectReason::USER_OK:
-      return "No error";
-    case DisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION:
-      return "Unacceptable protocol version";
-    case DisconnectReason::MQTT_IDENTIFIER_REJECTED:
-      return "Identified rejected";
-    case DisconnectReason::MQTT_SERVER_UNAVAILABLE:
-      return "Server unavailable";
-    case DisconnectReason::MQTT_MALFORMED_CREDENTIALS:
-      return "Malformed credentials";
-    case DisconnectReason::MQTT_NOT_AUTHORIZED:
-      return "Not authorized";
-    case DisconnectReason::TLS_BAD_FINGERPRINT:
-      return "Bad fingerprint";
-    case DisconnectReason::TCP_CONNECTION_LOST:
-      return "TCP disconnected";
-    default:
-      return "";
+      case DisconnectReason::USER_OK:
+        return "No error";
+      case DisconnectReason::MQTT_UNACCEPTABLE_PROTOCOL_VERSION:
+        return "Unacceptable protocol version";
+      case DisconnectReason::MQTT_IDENTIFIER_REJECTED:
+        return "Identified rejected";
+      case DisconnectReason::MQTT_SERVER_UNAVAILABLE:
+        return "Server unavailable";
+      case DisconnectReason::MQTT_MALFORMED_CREDENTIALS:
+        return "Malformed credentials";
+      case DisconnectReason::MQTT_NOT_AUTHORIZED:
+        return "Not authorized";
+      case DisconnectReason::TLS_BAD_FINGERPRINT:
+        return "Bad fingerprint";
+      case DisconnectReason::TCP_CONNECTION_LOST:
+        return "TCP disconnected";
+      default:
+        return "";
     }
   }
 
   const char *subscribeReturncodeToString(SubscribeReturncode returnCode) {
     switch (returnCode) {
-    case SubscribeReturncode::QOS0:
-      return "QoS 0";
-    case SubscribeReturncode::QOS1:
-      return "QoS 1";
-    case SubscribeReturncode::QOS2:
-      return "QoS 2";
-    case SubscribeReturncode::FAIL:
-      return "Failed";
-    default:
-      return "";
+      case SubscribeReturncode::QOS0:
+        return "QoS 0";
+      case SubscribeReturncode::QOS1:
+        return "QoS 1";
+      case SubscribeReturncode::QOS2:
+        return "QoS 2";
+      case SubscribeReturncode::FAIL:
+        return "Failed";
+      default:
+        return "";
     }
   }
 
@@ -137,40 +138,23 @@ public:
 
     return bytesNeeded;
   }
-static void fillTwoBytes(uint8_t *data, uint16_t value) {
-  data[0] = static_cast<uint8_t>((value >> 8) & 0xFF);
-  data[1] = static_cast<uint8_t>(value & 0xFF);
-}
-  
-static void fillMQTTString(uint8_t *data, const char *str) {
-  size_t length = strlen(str);
-  fillTwoBytes(data, static_cast<uint16_t>(length));
-  memcpy(&data[2], str, length);
-}
 
+  static void fillTwoBytes(uint16_t value, uint8_t *data, size_t &position) {
+    data[position++] = value >> 8;
+    data[position++] = value & 0xFF;
+  }
 
-
-static size_t fillRemainingLength(uint8_t *data, size_t length) {
-  size_t index = 0;
-  do {
-    uint8_t encodedByte = length % 128;
-    length /= 128;
-    if (length > 0)
-      encodedByte |= 0x80;
-    data[index++] = encodedByte;
-  } while (length > 0);
-  return index;
-}
-
-
-
-
-
-
-
-
-
-
+  static size_t fillRemainingLength(uint8_t *data, size_t length) {
+    size_t index = 0;
+    do {
+      uint8_t encodedByte = length % 128;
+      length /= 128;
+      if (length > 0)
+        encodedByte |= 0x80;
+      data[index++] = encodedByte;
+    } while (length > 0);
+    return index;
+  }
 };
 
 #endif

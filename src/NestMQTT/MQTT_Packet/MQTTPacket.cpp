@@ -132,47 +132,31 @@ Packet::Packet(MQTTErrors &error, bool cleanSession, const char *username,
   pos += MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[pos]);
   pos += MQTTUtility::encodeString(PROTOCOL, &_packetData[pos]);
   _packetData[pos++] = PROTOCOL_LEVEL;
-  uint8_t connectFlags = 0;
-  if (cleanSession)
-    connectFlags |= MQTTCore::ConnectFlag.CLEAN_SESSION;
-  if (username != nullptr)
-    connectFlags |= MQTTCore::ConnectFlag.USERNAME;
-  if (password != nullptr)
-    connectFlags |= MQTTCore::ConnectFlag.PASSWORD;
-  if (willTopic != nullptr) {
-    connectFlags |= MQTTCore::ConnectFlag.WILL;
-    if (willRetain)
-      connectFlags |= MQTTCore::ConnectFlag.WILL_RETAIN;
-    switch (willQos) {
-      case 0:
-        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS0;
-        break;
-      case 1:
-        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS1;
-        break;
-      case 2:
-        connectFlags |= MQTTCore::ConnectFlag.WILL_QOS2;
-        break;
-    }
-  }
+  uint8_t connectFlags
+      = (cleanSession ? MQTTCore::ConnectFlag.CLEAN_SESSION : 0)
+        | (username ? MQTTCore::ConnectFlag.USERNAME : 0)
+        | (password ? MQTTCore::ConnectFlag.PASSWORD : 0)
+        | (willTopic ? MQTTCore::ConnectFlag.WILL : 0)
+        | (willRetain ? MQTTCore::ConnectFlag.WILL_RETAIN : 0)
+        | (willQos ? (willQos << 3) : 0);
   _packetData[pos++] = connectFlags;
-  _packetData[pos++] = keepAlive >> 8;
-  _packetData[pos++] = keepAlive & 0xFF;
+  MQTTUtility::fillTwoBytes(keepAlive, _packetData, pos);
+
   // PAYLOAD
   // client ID
   pos += MQTTUtility::encodeString(clientId, &_packetData[pos]);
   // will
   if (willTopic != nullptr && willPayload != nullptr) {
     pos += MQTTUtility::encodeString(willTopic, &_packetData[pos]);
-    _packetData[pos++] = willPayloadLength >> 8;
-    _packetData[pos++] = willPayloadLength & 0xFF;
+    MQTTUtility::fillTwoBytes(willPayloadLength, _packetData, pos);
+
     memcpy(&_packetData[pos], willPayload, willPayloadLength);
     pos += willPayloadLength;
   }
   // credentials
-  if (username != nullptr)
+  if (username)
     pos += MQTTUtility::encodeString(username, &_packetData[pos]);
-  if (password != nullptr)
+  if (password)
     pos += MQTTUtility::encodeString(password, &_packetData[pos]);
 
   error = MQTTErrors::SUCCESS;
@@ -344,8 +328,7 @@ Packet::Packet(MQTTErrors &error, uint16_t packetId, MQTTPacketType type)
     pos++;
   }
   pos += MQTTUtility::encodeRemainingLength(2, &_packetData[pos]);
-  _packetData[pos++] = packetId >> 8;
-  _packetData[pos] = packetId & 0xFF;
+  MQTTUtility::fillTwoBytes(packetId, _packetData, pos);
 
   error = MQTTErrors::SUCCESS;
 }
@@ -444,30 +427,28 @@ bool Packet::_allocateMemory(size_t remainingLength, bool check) {
 size_t Packet::_fillPublishHeader(uint16_t packetId, const char *topic,
                                   size_t remainingLength, uint8_t qos,
                                   bool retain) {
-  size_t index = 0;
+  size_t pos = 0;
 
   // FIXED HEADER
-  _packetData[index] = MQTTCore::PacketType.PUBLISH;
+  _packetData[pos] = MQTTCore::PacketType.PUBLISH;
   if (retain)
-    _packetData[index] |= MQTTCore::HeaderFlag.PUBLISH_RETAIN;
+    _packetData[pos] |= MQTTCore::HeaderFlag.PUBLISH_RETAIN;
   if (qos == 0) {
-    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS0;
+    _packetData[pos++] |= MQTTCore::HeaderFlag.PUBLISH_QOS0;
   } else if (qos == 1) {
-    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS1;
+    _packetData[pos++] |= MQTTCore::HeaderFlag.PUBLISH_QOS1;
   } else if (qos == 2) {
-    _packetData[index++] |= MQTTCore::HeaderFlag.PUBLISH_QOS2;
+    _packetData[pos++] |= MQTTCore::HeaderFlag.PUBLISH_QOS2;
   }
-  index += MQTTUtility::encodeRemainingLength(remainingLength,
-                                              &_packetData[index]);
+  pos += MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[pos]);
 
   // VARIABLE HEADER
-  index += MQTTUtility::encodeString(topic, &_packetData[index]);
+  pos += MQTTUtility::encodeString(topic, &_packetData[pos]);
   if (qos > 0) {
-    _packetData[index++] = packetId >> 8;
-    _packetData[index++] = packetId & 0xFF;
+    MQTTUtility::fillTwoBytes(packetId, _packetData, pos);
   }
 
-  return index;
+  return pos;
 }
 
 void Packet::_updateSubscribe(MQTTErrors &error, Subscription_task task,
@@ -482,25 +463,18 @@ void Packet::_updateSubscribe(MQTTErrors &error, Subscription_task task,
     return;
   }
 
-  // Determine the packet type and reserved flags based on the task
-  uint8_t packetType;
-  if (task == Subscription_task::SUBSCRIBE) {
-    packetType = MQTTCore::PacketType.SUBSCRIBE
-                 | MQTTCore::HeaderFlag.SUBSCRIBE_RESERVED;
-  } else if (task == Subscription_task::UNSUBSCRIBE) {
-    packetType = MQTTCore::PacketType.UNSUBSCRIBE
-                 | MQTTCore::HeaderFlag.UNSUBSCRIBE_RESERVED;
-  } else {
-    error = MQTTErrors::SUBSCRIBE_FAILED;
-    return;
-  }
-
   // Begin constructing the packet
   size_t pos = 0;
-  _packetData[pos++] = packetType;
+  _packetData[pos++] = (task == Subscription_task::SUBSCRIBE)
+                           ? MQTTCore::PacketType.SUBSCRIBE
+                                 | MQTTCore::HeaderFlag.SUBSCRIBE_RESERVED
+                           : MQTTCore::PacketType.UNSUBSCRIBE
+                                 | MQTTCore::HeaderFlag.UNSUBSCRIBE_RESERVED;
+  pos = 1
+        + MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[1]);
+  ;
   pos += MQTTUtility::encodeRemainingLength(remainingLength, &_packetData[pos]);
-  _packetData[pos++] = _packetId >> 8;
-  _packetData[pos++] = _packetId & 0xFF;
+  MQTTUtility::fillTwoBytes(_packetId, _packetData, pos);
 
   // Process each topic in the subscription
   size_t numberTopics = subscription.numberTopics;
